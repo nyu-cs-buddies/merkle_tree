@@ -1,4 +1,6 @@
 #include <iostream>
+#include <filesystem>
+#include <fstream>
 #include <queue>
 #include <vector>
 
@@ -6,6 +8,7 @@
 #define BLOCK_SIZE 1024
 
 using namespace std;
+namespace fs = filesystem;
 
 class Block {
   public:
@@ -128,13 +131,33 @@ class MerkleTree {
   }
 };
 
-int main() {
-  unsigned char data[BLOCK_SIZE * 4] = {0};
-  memset(data, 9, BLOCK_SIZE);
-  memset(data + BLOCK_SIZE, 5, BLOCK_SIZE);
-  memset(data + BLOCK_SIZE * 2, 2, BLOCK_SIZE);
-  memset(data + BLOCK_SIZE * 3, 7, BLOCK_SIZE);
-  Blocks blocks(data, BLOCK_SIZE * 4);
+int main(int argc, char *argv[]) {
+  unsigned char* data;
+  int data_len = 0;
+  if (argc == 1) {
+    cerr << "Usage: ./merkle_tree_cpu <filename>" << endl;
+    cerr << "For demo, creating data filed with '9527' with 4096 bytes." << endl;
+    data = (unsigned char*) malloc(BLOCK_SIZE * 4 * sizeof(unsigned char));
+    data_len = BLOCK_SIZE * 4;
+    memset(data + BLOCK_SIZE * 0, 9, BLOCK_SIZE);
+    memset(data + BLOCK_SIZE * 1, 5, BLOCK_SIZE);
+    memset(data + BLOCK_SIZE * 2, 2, BLOCK_SIZE);
+    memset(data + BLOCK_SIZE * 3, 7, BLOCK_SIZE);
+  } else {
+    fs::path p{argv[1]};
+    if (! fs::exists(p)) {
+      cerr << "File not found at: " << fs::absolute(p) << endl;
+      exit(2);
+    }
+    cout << "path = " << fs::absolute(p) << endl;
+    cout << "filesize = " << fs::file_size(p) << endl;
+    data_len = fs::file_size(p);
+    data = (unsigned char*) malloc(data_len * sizeof(unsigned char));
+    ifstream is;
+    is.open(p, ios::binary);
+    is.read((char*)data, data_len);
+  }
+  Blocks blocks(data, data_len);
   MerkleTree merkle_tree(blocks);
   merkle_tree.print();
   return 0;
