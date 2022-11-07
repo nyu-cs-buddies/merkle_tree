@@ -1,5 +1,5 @@
 # Merkle Tree - CPU Version
-A navie implementation of Merkle Tree.
+A navie CPU implementation of Merkle Tree.
 
 ## Usage
-```./merkle_tree_cpu <filename>"```
+```./merkle_tree_cpu <filename>```
