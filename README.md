@@ -2,7 +2,7 @@
 Merkle Tree by GPU
 
 ## Team Members
-- Morris Shen
+- Morris (Chun-Ting) Shen 
 - Oscar Hsu
 - Po-Yuan Huang
 - Pin-Tsung Huang
