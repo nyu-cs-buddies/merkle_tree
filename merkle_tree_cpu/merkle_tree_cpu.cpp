@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <fstream>
 #include <queue>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <openssl/sha.h>
@@ -10,6 +12,23 @@
 
 using namespace std;
 namespace fs = filesystem;
+
+enum LeftOrRightSib {
+  NA,
+  LEFT,
+  RIGHT
+};
+
+string hash_to_hex_string(unsigned char *hash, int size) {
+  char temp[3];
+  string result = "";
+  for (int i = 0; i < size; i++) {
+    snprintf(temp, 3, "%02x", hash[i]);
+    result += temp[0];
+    result += temp[1];
+  }
+  return result;
+}
 
 class Block {
   public:
@@ -51,23 +70,65 @@ class Blocks {
 
 class MerkleNode {
  public:
+  MerkleNode* parent;
   MerkleNode* left;
   MerkleNode* right;
+  LeftOrRightSib lr;
   unsigned char hash[SHA256_DIGEST_LENGTH];
 
-  MerkleNode() : left(nullptr), right(nullptr) {}
+  MerkleNode() : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {}
 
-  MerkleNode(const Block& block) : left(nullptr), right(nullptr) {
+  MerkleNode(string hash_str)
+      : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
+        unsigned char buf;
+        for (int i = 0; i < hash_str.size(); i += 2) {
+          sscanf(hash_str.c_str() + i, "%02x", &buf);
+          hash[i / 2] = buf;
+        }
+      }
+
+  MerkleNode(const Block &block)
+      : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
     SHA256(block.data, BLOCK_SIZE, hash);
   }
 
-  MerkleNode(MerkleNode* lhs, MerkleNode* rhs) {
+  MerkleNode(MerkleNode* lhs, MerkleNode* rhs) : lr(NA) {
     unsigned char data[SHA256_DIGEST_LENGTH * 2];
     memcpy(data, lhs->hash, SHA256_DIGEST_LENGTH);
     memcpy(data + SHA256_DIGEST_LENGTH, rhs->hash, SHA256_DIGEST_LENGTH);
     SHA256(data, SHA256_DIGEST_LENGTH * 2, hash);
     left = lhs;
     right = rhs;
+    lhs->parent = this;
+    rhs->parent = this;
+    lhs->lr = LEFT;
+    rhs->lr = RIGHT;
+  }
+
+  MerkleNode(MerkleNode cur_node, MerkleNode* sibling)
+      : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
+    unsigned char data[SHA256_DIGEST_LENGTH * 2];
+    if (sibling->lr == LEFT) {
+      memcpy(data, sibling->hash, SHA256_DIGEST_LENGTH);
+      memcpy(data + SHA256_DIGEST_LENGTH, cur_node.hash, SHA256_DIGEST_LENGTH);
+    } else {
+      memcpy(data, cur_node.hash, SHA256_DIGEST_LENGTH);
+      memcpy(data + SHA256_DIGEST_LENGTH, sibling->hash, SHA256_DIGEST_LENGTH);
+    } 
+    SHA256(data, SHA256_DIGEST_LENGTH * 2, hash);
+  }
+
+  MerkleNode(MerkleNode cur_node, MerkleNode sibling)
+      : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
+    unsigned char data[SHA256_DIGEST_LENGTH * 2];
+    if (sibling.lr == LEFT) {
+      memcpy(data, sibling.hash, SHA256_DIGEST_LENGTH);
+      memcpy(data + SHA256_DIGEST_LENGTH, cur_node.hash, SHA256_DIGEST_LENGTH);
+    } else {
+      memcpy(data, cur_node.hash, SHA256_DIGEST_LENGTH);
+      memcpy(data + SHA256_DIGEST_LENGTH, sibling.hash, SHA256_DIGEST_LENGTH);
+    } 
+    SHA256(data, SHA256_DIGEST_LENGTH * 2, hash);
   }
 
   void print_hash() {
@@ -82,6 +143,7 @@ class MerkleTree {
  private:
   MerkleNode* root;
   Blocks blocks;
+  unordered_map<string, MerkleNode*> hash_leaf_map;
 
  public:
   void print() {
@@ -107,13 +169,24 @@ class MerkleTree {
    }
   }
 
+  string root_hash() {
+    return hash_to_hex_string(root->hash, SHA256_DIGEST_LENGTH);
+  }
+
+  void print_root_hash() {
+    cout << root_hash() << endl;
+  }
+
   MerkleNode* make_tree_from_blocks(Blocks& blocks) {
     if (blocks.blocks().empty()) {
       return nullptr;
     }
     vector<MerkleNode*> cur_layer_nodes;
     for (const auto& block : blocks.blocks()) {
-      cur_layer_nodes.push_back(new MerkleNode(block));
+      MerkleNode* to_add = new MerkleNode(block);
+      cur_layer_nodes.push_back(to_add);
+      string hash_str = hash_to_hex_string(to_add->hash, SHA256_DIGEST_LENGTH);
+      hash_leaf_map[hash_str] = to_add;
     }
     
     while (cur_layer_nodes.size() > 1) {
@@ -132,6 +205,8 @@ class MerkleTree {
     }
     return cur_layer_nodes[0];
   }
+
+  MerkleTree() {};
 
   MerkleTree(Blocks& blocks_) {
     blocks = blocks_;
@@ -157,6 +232,97 @@ class MerkleTree {
     blocks.add_blocks(new_blocks);
     delete_tree();
     root = make_tree_from_blocks(blocks);
+  }
+
+  vector<MerkleNode*> find_siblings(MerkleNode* leaf) {
+    vector<MerkleNode*> result;
+    MerkleNode* cur_node = leaf;
+    while (cur_node->parent != nullptr) {
+      if (cur_node->lr == LEFT) {
+        result.push_back(cur_node->parent->right);
+      } else {
+        result.push_back(cur_node->parent->left);
+      }
+      cur_node = cur_node->parent;
+    }
+    return result;
+  }
+
+  vector<MerkleNode> find_siblings(string hash_str) {
+    MerkleNode* cur_node;
+    auto it = hash_leaf_map.find(hash_str);
+    if (it != hash_leaf_map.end()) {
+      cur_node = it->second;
+    } else {
+      return {};
+    }
+
+    vector<MerkleNode> result;
+    while (cur_node != nullptr && cur_node->parent != nullptr) {
+      MerkleNode tmp;
+      if (cur_node->lr == LEFT) {
+        tmp = (*cur_node->parent->right);
+      } else {
+        tmp = (*cur_node->parent->left);
+      }
+      result.push_back(tmp);
+      cur_node = cur_node->parent;
+    }
+    return result;
+  }
+
+  bool verify(unsigned char* data, int data_len) {
+    Blocks blocks_to_verify(data, data_len);
+    for (auto block : blocks_to_verify.blocks()) {
+      if (! verify(block)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool verify(Block& block) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256(block.data, BLOCK_SIZE, hash);
+    return verify(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));
+  }
+
+  bool verify(string hash_str) {
+    if (hash_str.size() != SHA256_DIGEST_LENGTH * 2) {
+      return false;
+    }
+    if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
+      return false;
+    }
+    MerkleNode* node = hash_leaf_map[hash_str];
+    MerkleNode input = (*node);
+    auto siblings = find_siblings(node);
+    return verify(input, siblings);
+  }
+
+  bool verify(MerkleNode cur_node, vector<MerkleNode*>& siblings) {
+    for (const auto& sibling : siblings) {
+      cur_node = MerkleNode(cur_node, sibling);
+    }
+    if (memcmp(cur_node.hash, root->hash, SHA256_DIGEST_LENGTH) == 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  bool verify(string hash_str, vector<MerkleNode> &siblings,
+              string root_hash) {
+    MerkleNode cur_node(hash_str);
+    for (const auto &sibling : siblings) {
+      cur_node = MerkleNode(cur_node, sibling);
+    }
+    string calculated = hash_to_hex_string(cur_node.hash, SHA256_DIGEST_LENGTH);
+    if (calculated == root_hash) {
+      return true;
+    } else {
+      return false;
+    }
   }
 };
 
@@ -195,6 +361,35 @@ int main(int argc, char *argv[]) {
   MerkleTree merkle_tree(blocks);
   cout << "===== Read all at once. =====" << endl;
   merkle_tree.print();
+  cout << "Root hash: ";
+  merkle_tree.print_root_hash();
+
+  int block_idx = 0;
+  printf("===== Test Block #%d out of %lu blocks =====\n", block_idx + 1,
+         blocks.blocks().size());
+
+  auto block_to_verify = blocks.blocks()[block_idx];
+  if (merkle_tree.verify(block_to_verify.data, BLOCK_SIZE)) {
+    cout << "Yeah! Verified!" << endl;
+  }
+  if (merkle_tree.verify(block_to_verify)) {
+    cout << "Yeah! Verified!" << endl;
+  }
+
+  cout << "==== Verify as a client ====" << endl;
+  unsigned char client_hash[SHA256_DIGEST_LENGTH];
+  SHA256(block_to_verify.data, BLOCK_SIZE, client_hash);
+  string hash_str = hash_to_hex_string(client_hash, SHA256_DIGEST_LENGTH);
+  string root_hash = merkle_tree.root_hash();
+  cout << "hash_str of the block: " << hash_str << endl;
+  cout << "root_hash: " << root_hash << endl;
+  auto siblings = merkle_tree.find_siblings(hash_str);
+  MerkleTree local_tree;
+  if (local_tree.verify(hash_str, siblings, root_hash)) {
+    cout << "Yeah! Verified!" << endl;
+  }
+
+  /*
 
   // split input data into two halves; the second half is inserted later.
   int num_of_blocks = ceil((double)data_len / BLOCK_SIZE);
@@ -211,6 +406,8 @@ int main(int argc, char *argv[]) {
     cout << "=== Merkle Tree of the first half + the second half ===" << endl;
     merkle_tree_to_insert.print();
   }
+
+  */
 
   return 0;
 }
