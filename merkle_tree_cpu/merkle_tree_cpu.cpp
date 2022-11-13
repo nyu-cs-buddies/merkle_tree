@@ -1,4 +1,4 @@
-#include "merkle_tree_cpu.hpp"
+#include "../merkle_tree.hpp"
 
 int BLOCK_SIZE = 1024;
 
