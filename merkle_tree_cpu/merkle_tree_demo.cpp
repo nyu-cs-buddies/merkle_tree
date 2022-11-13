@@ -2,11 +2,12 @@
 #include "merkle_tree_cpu.hpp"
 
 int main(int argc, char *argv[]) {
+  BLOCK_SIZE = 1024;
   unsigned char* data;
   int data_len = 0;
   if (argc == 1) {
     // no input file; use dummy data for demo.
-    cerr << "Usage: ./merkle_tree_demo <filename>" << endl;
+    cerr << "Usage: ./merkle_tree_demo <BLOCK_SIZE> <filename>" << endl;
     cerr << "For demo, create data filed with '9527' with " << BLOCK_SIZE * 4
          << " bytes." << endl;
     data = (unsigned char *)malloc(BLOCK_SIZE * 4 * sizeof(unsigned char));
@@ -15,9 +16,10 @@ int main(int argc, char *argv[]) {
     memset(data + BLOCK_SIZE * 1, 5, BLOCK_SIZE);
     memset(data + BLOCK_SIZE * 2, 2, BLOCK_SIZE);
     memset(data + BLOCK_SIZE * 3, 7, BLOCK_SIZE);
-  } else {
+  } else if (argc == 3) {
+    BLOCK_SIZE = atoi(argv[1]);
     // input filepath provided
-    fs::path p{argv[1]};
+    fs::path p{argv[2]};
     if (! fs::exists(p)) {
       cerr << "File not found at: " << fs::absolute(p) << endl;
       exit(2);
@@ -30,12 +32,19 @@ int main(int argc, char *argv[]) {
     ifstream is;
     is.open(p, ios::binary);
     is.read((char*)data, data_len);
+  } else {
+    cerr << "Usage: ./merkle_tree_demo <BLOCK_SIZE> <filename>" << endl;
+    cerr << "Or ./merkle_tree_demo to demo with dummy data." << endl;
+    exit(1);
   }
 
-  // make blocks and make a merkle tree from them
+  // make Blocks from data for further demo
   Blocks blocks(data, data_len);
-  MerkleTree merkle_tree(blocks);
+
+  // make a MerkleTree from data
+  MerkleTree merkle_tree(data, data_len);
   cout << "===== Read all at once. =====" << endl;
+  cout << "BLOCK_SIZE = " << BLOCK_SIZE << endl;
   merkle_tree.print();
   cout << "Root hash: ";
   merkle_tree.print_root_hash();
@@ -67,20 +76,20 @@ int main(int argc, char *argv[]) {
 
   /*
 
-  // split input data into two halves; the second half is inserted later.
+  // split input data into two halves; the second half is appended later.
   int num_of_blocks = ceil((double)data_len / BLOCK_SIZE);
   if (num_of_blocks > 1) {
     int first_size = BLOCK_SIZE * (num_of_blocks / 2);
     Blocks old_blocks(data, first_size);
-    MerkleTree merkle_tree_to_insert(old_blocks);
+    MerkleTree merkle_tree_to_append(old_blocks);
     cout << "===== Read half first, and append the other half. =====" << endl;
     cout << "=== Merkle Tree of the first half ===" << endl;
-    merkle_tree_to_insert.print();
+    merkle_tree_to_append.print();
 
     Blocks new_blocks(data + first_size, data_len - first_size);
-    merkle_tree_to_insert.insert(new_blocks);
+    merkle_tree_to_append.append(new_blocks);
     cout << "=== Merkle Tree of the first half + the second half ===" << endl;
-    merkle_tree_to_insert.print();
+    merkle_tree_to_append.print();
   }
 
   */
