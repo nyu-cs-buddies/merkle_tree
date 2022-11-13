@@ -217,8 +217,13 @@ void MerkleTree::print_root_hash() { cout << root_hash() << endl; }
 
 // constructor using Blocks
 MerkleTree::MerkleTree(Blocks &blocks_) {
-  // blocks = blocks_;
   root = make_tree_from_blocks(blocks_);
+}
+
+// constructor using data in unsigned char and data_len
+MerkleTree::MerkleTree(unsigned char* data, int data_len) {
+  Blocks blocks(data, data_len);
+  root = make_tree_from_blocks(blocks);
 }
 
 // delete the MerkleTree
@@ -227,14 +232,19 @@ void MerkleTree::delete_tree() {
   root = nullptr;
 }
 
-// TODO(allenpthuang): Naive way to insert blocks! Should be more efficient.
-void MerkleTree::insert(Blocks &new_blocks) {
+// TODO(allenpthuang): Naive way to append blocks! Should be more efficient.
+void MerkleTree::append(Blocks &new_blocks) {
   for (const auto& block : new_blocks.blocks()) {
     MerkleNode* to_add = new MerkleNode(block);
     hashes.push_back(to_add);
   }
   delete_tree();
   root = make_tree_from_hashes(hashes);
+}
+
+void MerkleTree::append(unsigned char* data, int data_len) {
+  Blocks blocks_to_append(data, data_len);
+  append(blocks_to_append);
 }
 
 // return a vector of the pointer to the sibling MerkleNodes along

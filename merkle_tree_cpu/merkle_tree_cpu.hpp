@@ -11,8 +11,7 @@
 #include <vector>
 
 #include <openssl/sha.h>
-// #define BLOCK_SIZE 1024
-const int BLOCK_SIZE = 2048;
+static int BLOCK_SIZE = 2048;
 
 using namespace std;
 namespace fs = filesystem;
@@ -66,8 +65,6 @@ class MerkleNode {
 // MerkleTree, its constructors and verify functions
 class MerkleTree {
  private:
-  MerkleNode* root;
-  // Blocks blocks;
   vector<MerkleNode*> hashes;
   unordered_map<string, MerkleNode*> hash_leaf_map;
 
@@ -77,15 +74,18 @@ class MerkleTree {
   bool verify(MerkleNode cur_node, vector<MerkleNode*>& siblings);
 
  public:
+  MerkleNode* root;
   void print();
   string root_hash();
   void print_root_hash();
 
   MerkleTree() {};
   MerkleTree(Blocks& blocks_);
+  MerkleTree(unsigned char* data, int data_len);
 
   void delete_tree();
-  void insert(Blocks& new_blocks);
+  void append(Blocks& new_blocks);
+  void append(unsigned char* data, int data_len);
 
   vector<MerkleNode*> find_siblings(MerkleNode* leaf);
   vector<MerkleNode> find_siblings(string hash_str);
