@@ -1,5 +1,6 @@
 #include <iostream>
-#include "merkle_tree_cpu.hpp"
+#include <unistd.h>
+#include "../merkle_tree.hpp"
 
 int main(int argc, char *argv[]) {
   BLOCK_SIZE = 1024;

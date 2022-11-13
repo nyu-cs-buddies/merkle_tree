@@ -1,5 +1,5 @@
-#ifndef MERKLE_TREE_CPU_HPP
-#define MERKLE_TREE_CPU_HPP
+#ifndef MERKLE_TREE_HPP
+#define MERKLE_TREE_HPP
 
 #include <iostream>
 #include <cmath>
@@ -103,4 +103,4 @@ string hash_to_hex_string(unsigned char *hash, int size);
 void hex_string_to_hash(string hash_str, unsigned char* hash, int size);
 
 
-#endif /* MERKLE_TREE_CPU_HPP */
+#endif /* MERKLE_TREE_HPP */
