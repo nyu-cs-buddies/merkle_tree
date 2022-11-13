@@ -34,6 +34,14 @@ Block::Block() {
 //
 // Class Blocks
 //
+
+// Blocks destructor
+// TODO(allenpintsung): make this more smart with Rule of Five
+Blocks::~Blocks() {
+  for (auto &block : _blocks) {
+    delete (block.data);
+  }
+}
 vector<Block> const &Blocks::blocks() { return _blocks; }
 Blocks::Blocks(unsigned char *data, int data_len) {
   int num_of_blocks = data_len / BLOCK_SIZE;

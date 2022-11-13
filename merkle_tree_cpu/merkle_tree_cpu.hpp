@@ -38,6 +38,7 @@ class Blocks {
   public:
    vector<Block> const& blocks();
    Blocks() {}
+   ~Blocks();
    Blocks(unsigned char* data, int data_len);
    void add_blocks(Blocks& new_blocks);
 };
