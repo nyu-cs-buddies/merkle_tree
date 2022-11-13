@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <openssl/sha.h>
-static int BLOCK_SIZE = 2048;
+extern int BLOCK_SIZE;
 
 using namespace std;
 namespace fs = filesystem;

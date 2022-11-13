@@ -2,6 +2,7 @@
 #include "merkle_tree_cpu.hpp"
 
 int main(int argc, char *argv[]) {
+  BLOCK_SIZE = 1024;
   unsigned char* data;
   int data_len = 0;
   if (argc == 1) {
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
   // make a MerkleTree from data
   MerkleTree merkle_tree(data, data_len);
   cout << "===== Read all at once. =====" << endl;
+  cout << "BLOCK_SIZE = " << BLOCK_SIZE << endl;
   merkle_tree.print();
   cout << "Root hash: ";
   merkle_tree.print_root_hash();

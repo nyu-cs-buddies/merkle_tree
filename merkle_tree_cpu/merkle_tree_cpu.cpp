@@ -1,5 +1,7 @@
 #include "merkle_tree_cpu.hpp"
 
+int BLOCK_SIZE = 1024;
+
 string hash_to_hex_string(unsigned char *hash, int size) {
   char temp[3];
   string result = "";
