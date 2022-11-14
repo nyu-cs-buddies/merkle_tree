@@ -1,9 +1,7 @@
-#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <unistd.h>
 #include "../merkle_tree.hpp"
-
-namespace fs = filesystem;
 
 int main(int argc, char *argv[]) {
   BLOCK_SIZE = 1024;
@@ -11,7 +9,7 @@ int main(int argc, char *argv[]) {
   int data_len = 0;
   if (argc == 1) {
     // no input file; use dummy data for demo.
-    cerr << "Usage: ./merkle_tree_demo <BLOCK_SIZE> <filename>" << endl;
+    cerr << "Usage: ./merkle_tree_gpu_demo <BLOCK_SIZE> <filename>" << endl;
     cerr << "For demo, create data filed with '9527' with " << BLOCK_SIZE * 4
          << " bytes." << endl;
     data = (unsigned char *)malloc(BLOCK_SIZE * 4 * sizeof(unsigned char));
@@ -23,22 +21,24 @@ int main(int argc, char *argv[]) {
   } else if (argc == 3) {
     BLOCK_SIZE = atoi(argv[1]);
     // input filepath provided
-    fs::path p{argv[2]};
-    if (! fs::exists(p)) {
-      cerr << "File not found at: " << fs::absolute(p) << endl;
+    ifstream is;
+    is.open(argv[2], ios::binary | ios::ate);
+    if (! is.good()) {
+      cerr << "File not found at: " << argv[2] << endl;
       exit(2);
     }
     // show file info and read into a buffer
-    cout << "path = " << fs::absolute(p) << endl;
-    cout << "filesize = " << fs::file_size(p) << endl;
-    data_len = fs::file_size(p);
+    data_len = is.tellg();
+    cout << "path = " << argv[2] << endl;
+    cout << "filesize = " << data_len << endl;
+
     data = (unsigned char *)malloc(data_len * sizeof(unsigned char));
-    ifstream is;
-    is.open(p, ios::binary);
+    is.clear();
+    is.seekg(0, std::ios::beg);
     is.read((char*)data, data_len);
   } else {
-    cerr << "Usage: ./merkle_tree_demo <BLOCK_SIZE> <filename>" << endl;
-    cerr << "Or ./merkle_tree_demo to demo with dummy data." << endl;
+    cerr << "Usage: ./merkle_tree_gpu_demo <BLOCK_SIZE> <filename>" << endl;
+    cerr << "Or ./merkle_tree_gpu_demo to demo with dummy data." << endl;
     exit(1);
   }
 
