@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include "../merkle_tree.hpp"
 
+using namespace std;
+
 int main(int argc, char *argv[]) {
   BLOCK_SIZE = 1024;
   unsigned char* data;
