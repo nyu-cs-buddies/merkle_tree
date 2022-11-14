@@ -2,8 +2,8 @@
 #define MERKLE_TREE_HPP
 
 #include <iostream>
+#include <cstring>
 #include <cmath>
-#include <filesystem>
 #include <fstream>
 #include <queue>
 #include <string>
@@ -14,7 +14,17 @@
 extern int BLOCK_SIZE;
 
 using namespace std;
-namespace fs = filesystem;
+/*
+using std::vector;
+using std::unordered_map;
+using std::string;
+using std::cout;
+using std::endl;
+using std::cerr;
+using std::ios;
+using std::filesystem;
+using std::queue;
+*/
 
 // Indicate the node to be the LEFT or RIGHT child of its parent
 enum LeftOrRightSib {

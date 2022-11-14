@@ -1,6 +1,9 @@
+#include <filesystem>
 #include <iostream>
 #include <unistd.h>
 #include "../merkle_tree.hpp"
+
+namespace fs = filesystem;
 
 int main(int argc, char *argv[]) {
   BLOCK_SIZE = 1024;
