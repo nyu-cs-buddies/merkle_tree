@@ -3,7 +3,7 @@ A navie CPU implementation of Merkle Tree.
 
 ## Usage - Demo
 ```
-../make
+../make cpu
 ```
 
 Use it with a file with the `BLOCK_SIZE` setting:

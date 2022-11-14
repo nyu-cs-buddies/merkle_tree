@@ -6,9 +6,9 @@ Project can now be compiled on cuda2@cims with `nvcc`, but no real GPU
 acceleration is applied yet.
 
 ## Usage - Demo
+Note: Makefile now `module load gcc-8.2` if you are on CUDA machines.
 ```
-module load gcc-11.2  # check `module avail gcc`
-../make
+../make gpu
 ```
 
 Use it with a file with the `BLOCK_SIZE` setting:
