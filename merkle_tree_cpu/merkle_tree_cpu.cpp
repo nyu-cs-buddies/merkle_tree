@@ -16,11 +16,12 @@ string hash_to_hex_string(unsigned char *hash, int size) {
 }
 
 void hex_string_to_hash(string hash_str, unsigned char* hash, int size) {
-  if (hash_str.size() / 2 > size) {
+  int hash_str_size = hash_str.size();
+  if (hash_str_size / 2 > size) {
     return;
   }
   unsigned char buf;
-  for (int i = 0; i < hash_str.size(); i += 2) {
+  for (int i = 0; i < hash_str_size; i += 2) {
     sscanf(hash_str.c_str() + i, "%02hhx", &buf);
     hash[i / 2] = buf;
   }
@@ -150,15 +151,17 @@ void MerkleTree::delete_tree_walker(MerkleNode *cur_node) {
 // produce a MerkleTree from hashes
 MerkleNode *
 MerkleTree::make_tree_from_hashes(vector<MerkleNode *>& cur_layer_nodes) {
-  while (cur_layer_nodes.size() > 1) {
+  int cur_layer_nodes_size = cur_layer_nodes.size();
+  while (cur_layer_nodes_size > 1) {
+    cur_layer_nodes_size = cur_layer_nodes.size();
     int count = 0;
-    for (int i = 0; i < cur_layer_nodes.size() - 1; i = i + 2) {
+    for (int i = 0; i < cur_layer_nodes_size - 1; i = i + 2) {
       cur_layer_nodes[count] =
           new MerkleNode(cur_layer_nodes[i], cur_layer_nodes[i + 1]);
       count++;
     }
-    if (count > 0 && cur_layer_nodes.size() % 2 != 0) {
-      cur_layer_nodes[count] = cur_layer_nodes[cur_layer_nodes.size() - 1];
+    if (count > 0 && cur_layer_nodes_size % 2 != 0) {
+      cur_layer_nodes[count] = cur_layer_nodes[cur_layer_nodes_size - 1];
       cur_layer_nodes.resize(count + 1);
     } else {
       cur_layer_nodes.resize(count);
