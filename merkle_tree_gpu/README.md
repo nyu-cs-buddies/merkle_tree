@@ -1,8 +1,13 @@
 # Merkle Tree - GPU Version
 GPU implementation of Merkle Tree.
 
+## Current Status: WIP
+Project can now be compiled on cuda2@cims with `nvcc`, but no real GPU
+acceleration is applied yet.
+
 ## Usage - Demo
 ```
+module load gcc-11.2
 ../make
 ```
 

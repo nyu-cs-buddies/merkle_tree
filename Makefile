@@ -1,4 +1,4 @@
-CXX = g++-11.2
+CXX = g++
 CXXFLAGS = -std=c++17 -Wall
 CUDACXX = nvcc
 CUDACXXFLAGS = -std=c++14
@@ -11,6 +11,7 @@ LDFLAGS += -L/opt/homebrew/opt/openssl@3/lib
 endif
 
 ifeq ($(UNAME), Linux)
+CXX = g++-11.2
 CPU_LDFLAGS += -static-libstdc++
 endif
 
