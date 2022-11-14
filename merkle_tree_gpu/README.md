@@ -7,7 +7,7 @@ acceleration is applied yet.
 
 ## Usage - Demo
 ```
-module load gcc-11.2
+module load gcc-11.2  # check `module avail gcc`
 ../make
 ```
 
