@@ -1,5 +1,7 @@
 #include "../merkle_tree.hpp"
 
+using namespace std;
+
 int BLOCK_SIZE = 1024;
 
 string hash_to_hex_string(unsigned char *hash, int size) {
