@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
          blocks.blocks().size());
 
   auto block_to_verify = blocks.blocks()[block_idx];
-  if (merkle_tree.verify(block_to_verify.data, BLOCK_SIZE)) {
+  if (merkle_tree.verify(block_to_verify->data, BLOCK_SIZE)) {
     cout << "Yeah! Verified!" << endl;
   }
   if (merkle_tree.verify(block_to_verify)) {
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 
   cout << "==== Verify as a client ====" << endl;
   unsigned char client_hash[SHA256_DIGEST_LENGTH];
-  SHA256(block_to_verify.data, BLOCK_SIZE, client_hash);
+  SHA256(block_to_verify->data, BLOCK_SIZE, client_hash);
   string hash_str = hash_to_hex_string(client_hash, SHA256_DIGEST_LENGTH);
   string root_hash = merkle_tree.root_hash();
   cout << "hash_str of the block: " << hash_str << endl;

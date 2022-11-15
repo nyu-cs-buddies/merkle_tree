@@ -25,17 +25,17 @@ class Block {
   public:
    unsigned char* data;
    Block();
+   ~Block();
 };
 
 // Collection of blocks
 class Blocks {
   private:
-   std::vector<Block> _blocks;
+   std::vector<Block*> _blocks;
 
   public:
-   std::vector<Block> const& blocks();
+   std::vector<Block*> const& blocks();
    Blocks() {}
-   ~Blocks();
    Blocks(unsigned char* data, int data_len);
    void add_blocks(Blocks& new_blocks);
 };
@@ -52,6 +52,7 @@ class MerkleNode {
   MerkleNode();
   MerkleNode(std::string hash_str);
   MerkleNode(const Block &block);
+  MerkleNode(Block* block);
   MerkleNode(MerkleNode* lhs, MerkleNode* rhs);
   MerkleNode(MerkleNode cur_node, MerkleNode* sibling);
   MerkleNode(MerkleNode cur_node, MerkleNode sibling);
@@ -90,6 +91,7 @@ class MerkleTree {
 
   bool verify(unsigned char* data, int data_len);
   bool verify(Block& block);
+  bool verify(Block* block);
   bool verify(std::string hash_str);
   bool verify(std::string hash_str, std::vector<MerkleNode> &siblings,
               std::string root_hash);

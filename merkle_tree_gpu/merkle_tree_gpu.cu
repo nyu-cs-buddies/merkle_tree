@@ -9,8 +9,7 @@ string hash_to_hex_string(unsigned char *hash, int size) {
   string result = "";
   for (int i = 0; i < size; i++) {
     snprintf(temp, 3, "%02x", hash[i]);
-    result += temp[0];
-    result += temp[1];
+    result += temp;
   }
   return result;
 }
@@ -33,33 +32,30 @@ Block::Block() {
   data = (unsigned char *)calloc(BLOCK_SIZE, sizeof(unsigned char));
 }
 
+Block::~Block() {
+  delete [] data;
+}
+
 //
 // Class Blocks
 //
-
-// Blocks destructor
-// TODO(allenpintsung): make this more smart with Rule of Five
-Blocks::~Blocks() {
-  for (auto &block : _blocks) {
-    delete (block.data);
-  }
-}
-vector<Block> const &Blocks::blocks() { return _blocks; }
+vector<Block*> const &Blocks::blocks() { return _blocks; }
 Blocks::Blocks(unsigned char *data, int data_len) {
   int num_of_blocks = data_len / BLOCK_SIZE;
   int offset = 0;
   for (int i = 0; i < num_of_blocks; i++) {
-    Block b;
-    memcpy(b.data, data + offset, BLOCK_SIZE);
+    Block* b = new Block();
+    memcpy(b->data, data + offset, BLOCK_SIZE);
     offset += BLOCK_SIZE;
     _blocks.push_back(b);
   }
   if (offset < data_len) {
-    Block b;
-    memcpy(b.data, data + offset, data_len - offset);
+    Block* b = new Block();
+    memcpy(b->data, data + offset, data_len - offset);
     _blocks.push_back(b);
   }
 }
+
 void Blocks::add_blocks(Blocks &new_blocks) {
   _blocks.insert(_blocks.end(), new_blocks.blocks().begin(),
                  new_blocks.blocks().end());
@@ -81,6 +77,12 @@ MerkleNode::MerkleNode(string hash_str)
 MerkleNode::MerkleNode(const Block &block)
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
   SHA256(block.data, BLOCK_SIZE, hash);
+}
+
+// make a MerkleNode from a pointer to a block
+MerkleNode::MerkleNode(Block* block)
+    : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
+  SHA256(block->data, BLOCK_SIZE, hash);
 }
 
 // make a parent MerkleNode from two child MerkleNodes (lhs, rhs)
@@ -314,6 +316,13 @@ bool MerkleTree::verify(unsigned char *data, int data_len) {
 bool MerkleTree::verify(Block &block) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
   SHA256(block.data, BLOCK_SIZE, hash);
+  return verify(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));
+}
+
+// verify whether a block of data exists in the MerkleTree via pointer
+bool MerkleTree::verify(Block* block) {
+  unsigned char hash[SHA256_DIGEST_LENGTH];
+  SHA256(block->data, BLOCK_SIZE, hash);
   return verify(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));
 }
 
