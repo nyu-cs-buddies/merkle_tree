@@ -29,11 +29,7 @@ void hex_string_to_hash(string hash_str, unsigned char* hash, int size) {
 // Class Block
 //
 Block::Block() {
-  data = (unsigned char *)calloc(BLOCK_SIZE, sizeof(unsigned char));
-}
-
-Block::~Block() {
-  delete [] data;
+  data = make_unique<unsigned char[]>(BLOCK_SIZE);
 }
 
 //
@@ -45,13 +41,13 @@ Blocks::Blocks(unsigned char *data, int data_len) {
   int offset = 0;
   for (int i = 0; i < num_of_blocks; i++) {
     auto b = make_shared<Block>();
-    memcpy(b->data, data + offset, BLOCK_SIZE);
+    memcpy(b->data.get(), data + offset, BLOCK_SIZE);
     offset += BLOCK_SIZE;
     _blocks.push_back(b);
   }
   if (offset < data_len) {
     auto b = make_shared<Block>();
-    memcpy(b->data, data + offset, data_len - offset);
+    memcpy(b->data.get(), data + offset, data_len - offset);
     _blocks.push_back(b);
   }
 }
@@ -76,13 +72,13 @@ MerkleNode::MerkleNode(string hash_str)
 // make a MerkleNode from a block
 MerkleNode::MerkleNode(const Block &block)
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
-  SHA256(block.data, BLOCK_SIZE, hash);
+  SHA256(block.data.get(), BLOCK_SIZE, hash);
 }
 
 // make a MerkleNode from a pointer to a block
 MerkleNode::MerkleNode(shared_ptr<Block> block)
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
-  SHA256(block->data, BLOCK_SIZE, hash);
+  SHA256(block->data.get(), BLOCK_SIZE, hash);
 }
 
 // make a parent MerkleNode from two child MerkleNodes (lhs, rhs)
@@ -315,14 +311,14 @@ bool MerkleTree::verify(unsigned char *data, int data_len) {
 // verify whether a block of data exists in the MerkleTree
 bool MerkleTree::verify(Block &block) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
-  SHA256(block.data, BLOCK_SIZE, hash);
+  SHA256(block.data.get(), BLOCK_SIZE, hash);
   return verify(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));
 }
 
 // verify whether a block of data exists in the MerkleTree via pointer
 bool MerkleTree::verify(shared_ptr<Block> block) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
-  SHA256(block->data, BLOCK_SIZE, hash);
+  SHA256(block->data.get(), BLOCK_SIZE, hash);
   return verify(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));
 }
 

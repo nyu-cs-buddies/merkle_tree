@@ -24,9 +24,8 @@ enum LeftOrRightSib {
 // Basic data block
 class Block {
   public:
-   unsigned char* data;
+   std::unique_ptr<unsigned char[]> data;
    Block();
-   ~Block();
 };
 
 // Collection of blocks
