@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cmath>
 #include <fstream>
+#include <memory>
 #include <queue>
 #include <string>
 #include <unordered_map>
