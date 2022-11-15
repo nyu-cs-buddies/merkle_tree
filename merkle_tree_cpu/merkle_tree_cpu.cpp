@@ -40,18 +40,18 @@ Block::~Block() {
 //
 // Class Blocks
 //
-vector<Block*> const &Blocks::blocks() { return _blocks; }
+vector<shared_ptr<Block> > const &Blocks::blocks() { return _blocks; }
 Blocks::Blocks(unsigned char *data, int data_len) {
   int num_of_blocks = data_len / BLOCK_SIZE;
   int offset = 0;
   for (int i = 0; i < num_of_blocks; i++) {
-    Block* b = new Block();
+    auto b = make_shared<Block>();
     memcpy(b->data, data + offset, BLOCK_SIZE);
     offset += BLOCK_SIZE;
     _blocks.push_back(b);
   }
   if (offset < data_len) {
-    Block* b = new Block();
+    auto b = make_shared<Block>();
     memcpy(b->data, data + offset, data_len - offset);
     _blocks.push_back(b);
   }
@@ -81,7 +81,7 @@ MerkleNode::MerkleNode(const Block &block)
 }
 
 // make a MerkleNode from a pointer to a block
-MerkleNode::MerkleNode(Block* block)
+MerkleNode::MerkleNode(shared_ptr<Block> block)
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA) {
   SHA256(block->data, BLOCK_SIZE, hash);
 }
@@ -323,7 +323,7 @@ bool MerkleTree::verify(Block &block) {
 }
 
 // verify whether a block of data exists in the MerkleTree via pointer
-bool MerkleTree::verify(Block* block) {
+bool MerkleTree::verify(shared_ptr<Block> block) {
   unsigned char hash[SHA256_DIGEST_LENGTH];
   SHA256(block->data, BLOCK_SIZE, hash);
   return verify(hash_to_hex_string(hash, SHA256_DIGEST_LENGTH));

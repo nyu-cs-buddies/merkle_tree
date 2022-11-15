@@ -45,11 +45,6 @@ int main(int argc, char *argv[]) {
 
   // make Blocks from data for further demo
   Blocks blocks(data, data_len);
-  /*
-  for (int i = 0; i < 100; i++) {
-    blocks = Blocks(data, data_len);
-  }
-  */
 
   // make a MerkleTree from data
   MerkleTree merkle_tree(data, data_len);
@@ -104,7 +99,6 @@ int main(int argc, char *argv[]) {
 
   */
 
-  // sleep(100);
 
   return 0;
 }

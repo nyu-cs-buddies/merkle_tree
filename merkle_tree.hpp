@@ -31,10 +31,10 @@ class Block {
 // Collection of blocks
 class Blocks {
   private:
-   std::vector<Block*> _blocks;
+   std::vector<std::shared_ptr<Block> > _blocks;
 
   public:
-   std::vector<Block*> const& blocks();
+   std::vector<std::shared_ptr<Block> > const& blocks();
    Blocks() {}
    Blocks(unsigned char* data, int data_len);
    void add_blocks(Blocks& new_blocks);
@@ -52,7 +52,7 @@ class MerkleNode {
   MerkleNode();
   MerkleNode(std::string hash_str);
   MerkleNode(const Block &block);
-  MerkleNode(Block* block);
+  MerkleNode(std::shared_ptr<Block> block);
   MerkleNode(MerkleNode* lhs, MerkleNode* rhs);
   MerkleNode(MerkleNode cur_node, MerkleNode* sibling);
   MerkleNode(MerkleNode cur_node, MerkleNode sibling);
@@ -68,7 +68,7 @@ class MerkleTree {
   std::unordered_map<std::string, MerkleNode*> hash_leaf_map;
 
   void delete_tree_walker(MerkleNode* cur_node);
-  MerkleNode* make_tree_from_hashes(std::vector<MerkleNode *>& cur_layer_nodes);
+  MerkleNode* make_tree_from_hashes(std::vector<MerkleNode*>& cur_layer_nodes);
   MerkleNode* make_tree_from_blocks(Blocks& blocks);
   bool verify(MerkleNode cur_node, std::vector<MerkleNode*>& siblings);
 
@@ -91,7 +91,7 @@ class MerkleTree {
 
   bool verify(unsigned char* data, int data_len);
   bool verify(Block& block);
-  bool verify(Block* block);
+  bool verify(std::shared_ptr<Block> block);
   bool verify(std::string hash_str);
   bool verify(std::string hash_str, std::vector<MerkleNode> &siblings,
               std::string root_hash);
