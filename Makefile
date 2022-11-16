@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall
 CUDACXX = nvcc
-CUDACXXFLAGS = -std=c++14
+CUDACXXFLAGS = -std=c++17
 
 UNAME := $(shell uname)
 HOST := $(shell hostname | cut -c1-4)
@@ -35,7 +35,7 @@ cpu : $(PATH_OF_CPU_VER)/$(PATH_OF_CPU_VER).cpp
 
 gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
 	test -d $(BIN_DIR) || mkdir $(BIN_DIR)
-	if [[ "$(HOST)" == "cuda" ]]; then module load gcc-8.2; fi; \
+	if [[ "$(HOST)" == "cuda" ]]; then module load cuda-11.4 gcc-11.2; fi; \
 	$(CUDACXX) $(CUDACXXFLAGS) -o bin/$(TARGET_GPU) \
 	$(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu \
 	$(PATH_OF_GPU_VER)/$(TARGET_GPU).cu $(LDFLAGS)
