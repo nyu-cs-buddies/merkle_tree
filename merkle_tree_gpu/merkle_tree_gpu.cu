@@ -1,5 +1,7 @@
 #include "../merkle_tree.hpp"
-
+#include "../cuda_hash_lib/sha256.cu"
+#include "../cuda_hash_lib/config.h"
+#include <assert.h>
 using namespace std;
 
 int BLOCK_SIZE = 1024;
@@ -91,6 +93,7 @@ MerkleNode::MerkleNode(MerkleNode *lhs, MerkleNode *rhs) : lr(NA) {
   SHA256(data, SHA256_DIGEST_LENGTH * 2, hash);
   left = lhs;
   right = rhs;
+  parent = nullptr;
   lhs->parent = this; // connect parent
   rhs->parent = this;
   lhs->lr = LEFT; // indicate left or right child
@@ -135,6 +138,18 @@ void MerkleNode::print_hash() {
   cout << endl;
 }
 
+void MerkleNode::print_info() {
+  string parent_hash;
+  if (parent != nullptr){
+    parent_hash = hash_to_hex_string(parent->hash, SHA256_DIGEST_LENGTH);
+  } else {
+    parent_hash = "";
+  }
+  cout << "parent hash: " << parent_hash << endl;
+  cout << "l or r: " << lr << endl;
+  cout <<   hash_to_hex_string(hash, SHA256_DIGEST_LENGTH) << endl;
+}
+
 //
 // Class MerkleTree
 //
@@ -172,6 +187,7 @@ MerkleNode *MerkleTree::make_tree_from_blocks(Blocks &blocks) {
   if (blocks.blocks().empty()) {
     return nullptr;
   }
+
   vector<MerkleNode *> cur_layer_nodes;
   for (const auto &block : blocks.blocks()) {
     MerkleNode *to_add = new MerkleNode(block);
@@ -234,8 +250,32 @@ MerkleTree::MerkleTree(Blocks &blocks_) {
 
 // constructor using data in unsigned char and data_len
 MerkleTree::MerkleTree(unsigned char* data, int data_len) {
-  Blocks blocks(data, data_len);
-  root = make_tree_from_blocks(blocks);
+  // Blocks blocks(data, data_len);
+  // root = make_tree_from_blocks(blocks);
+
+  int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1 : data_len / BLOCK_SIZE;
+  int in_bytes = num_of_blocks * BLOCK_SIZE;
+  int out_bytes = num_of_blocks * SHA256_BLOCK_SIZE;
+
+  unsigned char *out = (unsigned char *)calloc(out_bytes, sizeof(unsigned char));
+  unsigned char *dout, *din;
+  cudaMalloc((void**) &dout, out_bytes);
+  cudaMalloc((void**) &din, in_bytes);
+  cudaMemcpy(din, data, in_bytes, cudaMemcpyHostToDevice);
+  kernel_sha256_hash<<<1, num_of_blocks>>>(din, BLOCK_SIZE, dout, num_of_blocks);
+  cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
+  cudaFree(dout); cudaFree(din);
+
+  vector<MerkleNode *> cur_layer_nodes;
+  for (int i = 0; i < num_of_blocks; ++i) {
+    string hash_str = hash_to_hex_string(out + i * SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH);
+    MerkleNode *to_add = new MerkleNode(hash_str);
+    cur_layer_nodes.push_back(to_add);
+    hashes.push_back(to_add);
+    hash_leaf_map[hash_str] = to_add;
+  }
+
+  root = make_tree_from_hashes(hashes);
 }
 
 // delete the MerkleTree
@@ -338,10 +378,12 @@ bool MerkleTree::verify(string hash_str) {
 bool MerkleTree::verify(string hash_str, vector<MerkleNode> &siblings,
                         string root_hash) {
   MerkleNode cur_node(hash_str);
-  for (const auto &sibling : siblings) {
+  for (auto &sibling : siblings) {
+    sibling.print_hash();
     cur_node = MerkleNode(cur_node, sibling);
   }
   string calculated = hash_to_hex_string(cur_node.hash, SHA256_DIGEST_LENGTH);
+  cout << "check root hash" << endl;
   if (calculated == root_hash) {
     return true;
   } else {

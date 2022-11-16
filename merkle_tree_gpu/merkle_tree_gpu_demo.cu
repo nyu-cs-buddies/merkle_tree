@@ -56,13 +56,13 @@ int main(int argc, char *argv[]) {
   merkle_tree.print_root_hash();
 
   int block_idx = 0;
+  auto block_to_verify = blocks.blocks()[0];
   printf("===== Test Block #%d out of %lu blocks =====\n", block_idx + 1,
          blocks.blocks().size());
 
-  auto block_to_verify = blocks.blocks()[block_idx];
-  if (merkle_tree.verify(block_to_verify.data, BLOCK_SIZE)) {
-    cout << "Yeah! Verified!" << endl;
-  }
+  // if (merkle_tree.verify(block_to_verify.data, BLOCK_SIZE)) {
+  //   cout << "Yeah! Verified!" << endl;
+  // }
   if (merkle_tree.verify(block_to_verify)) {
     cout << "Yeah! Verified!" << endl;
   }

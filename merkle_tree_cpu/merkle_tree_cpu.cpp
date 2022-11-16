@@ -1,4 +1,6 @@
 #include "../merkle_tree.hpp"
+#include <assert.h>
+
 
 using namespace std;
 
@@ -136,6 +138,19 @@ void MerkleNode::print_hash() {
   cout << endl;
 }
 
+// print the infomation of a MerkleNode
+void MerkleNode::print_info() {
+  string parent_hash;
+  if (parent != nullptr){
+    parent_hash = hash_to_hex_string(parent->hash, SHA256_DIGEST_LENGTH);
+  } else {
+    parent_hash = "";
+  }
+  cout << "parent hash: " << parent_hash << endl;
+  cout << "l or r: " << lr << endl;
+  cout <<   hash_to_hex_string(hash, SHA256_DIGEST_LENGTH) << endl;
+}
+
 //
 // Class MerkleTree
 //
@@ -167,6 +182,7 @@ MerkleTree::make_tree_from_hashes(vector<MerkleNode *>& cur_layer_nodes) {
       cur_layer_nodes.resize(count);
     }
   }
+  assert(cur_layer_nodes[0]->parent == nullptr);
   return cur_layer_nodes[0];
 }
 

@@ -57,6 +57,7 @@ class MerkleNode {
   MerkleNode(MerkleNode cur_node, MerkleNode sibling);
 
   void print_hash();
+  void print_info();
 };
 
 
@@ -74,8 +75,9 @@ class MerkleTree {
  public:
   MerkleNode* root;
   void print();
-  std::string root_hash();
   void print_root_hash();
+  std::string root_hash();
+  void xr();
 
   MerkleTree() {};
   MerkleTree(Blocks& blocks_);
