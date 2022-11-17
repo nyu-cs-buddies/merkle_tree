@@ -87,7 +87,8 @@ MerkleNode::MerkleNode(const Block &block)
 }
 
 // make a parent MerkleNode from two child MerkleNodes (lhs, rhs)
-MerkleNode::MerkleNode(MerkleNode *lhs, MerkleNode *rhs) : lr(NA) {
+MerkleNode::MerkleNode(MerkleNode *lhs, MerkleNode *rhs)
+    : parent(nullptr), lr(NA) {
   unsigned char data[SHA256_DIGEST_LENGTH * 2];
   memcpy(data, lhs->hash, SHA256_DIGEST_LENGTH);
   memcpy(data + SHA256_DIGEST_LENGTH, rhs->hash, SHA256_DIGEST_LENGTH);
