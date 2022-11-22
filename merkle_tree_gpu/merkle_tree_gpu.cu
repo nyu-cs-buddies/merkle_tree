@@ -1,4 +1,5 @@
 #include "../merkle_tree.hpp"
+#include "../cuda_hash_lib/md5.cu"
 #include "../cuda_hash_lib/sha256.cu"
 #include "../cuda_hash_lib/config.h"
 #include <cassert>
@@ -7,6 +8,46 @@
 using namespace std;
 
 int BLOCK_SIZE = 1024;
+
+// hash algorithms - GPU versions
+// SHA256
+SHA_256_GPU::SHA_256_GPU() {
+  digest_size = SHA256_DIGEST_LENGTH;
+}
+
+void SHA_256_GPU::get_hash(unsigned char* data,
+                            int data_len,
+                            unsigned char* hash) {
+  SHA256(data, data_len, hash);
+}
+
+void SHA_256_GPU::get_hash(unsigned char* din,
+                            int block_size,
+                            unsigned char* dout,
+                            int num_of_blocks) {
+  kernel_sha256_hash<<<1, num_of_blocks>>>(din, block_size,
+                                           dout, num_of_blocks);
+}
+
+// MD5
+MD_5_GPU::MD_5_GPU() {
+  digest_size = MD5_DIGEST_LENGTH;
+}
+
+void MD_5_GPU::get_hash(unsigned char* data,
+                        int data_len,
+                        unsigned char* hash) {
+  MD5(data, data_len, hash);
+}
+
+void MD_5_GPU::get_hash(unsigned char* din,
+                        int block_size,
+                        unsigned char* dout,
+                        int num_of_blocks) {
+  kernel_md5_hash<<<1, num_of_blocks>>>(din, block_size,
+                                        dout, num_of_blocks);
+}
+
 
 string hash_to_hex_string(unsigned char *hash, int size) {
   char temp[3];
@@ -298,6 +339,8 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
   // Blocks blocks(data, data_len);
   // root = make_tree_from_blocks(blocks);
 
+  // Note(allenpthuang): for temporary testing
+  // SHA_256_GPU gpu_hasher;
   int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1 : data_len / BLOCK_SIZE;
   int in_bytes = num_of_blocks * BLOCK_SIZE;
   int out_bytes = num_of_blocks * hasher->hash_length();
@@ -307,7 +350,8 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
   cudaMalloc((void**) &dout, out_bytes);
   cudaMalloc((void**) &din, in_bytes);
   cudaMemcpy(din, data, in_bytes, cudaMemcpyHostToDevice);
-  kernel_sha256_hash<<<1, num_of_blocks>>>(din, BLOCK_SIZE, dout, num_of_blocks);
+  hasher->get_hash(din, BLOCK_SIZE, dout, num_of_blocks);
+  // kernel_sha256_hash<<<1, num_of_blocks>>>(din, BLOCK_SIZE, dout, num_of_blocks);
   cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
   cudaFree(dout); cudaFree(din);
 
@@ -423,10 +467,10 @@ bool MerkleTree::verify(string hash_str) {
 // using only sibling MerkleNodes and the root hash.
 bool MerkleTree::verify(string hash_str, vector<MerkleNode> &siblings,
                         string root_hash) {
-  MerkleNode cur_node(hash_str);
+  MerkleNode cur_node(hash_str, hasher);
   for (auto &sibling : siblings) {
     sibling.print_hash();
-    cur_node = MerkleNode(cur_node, sibling);
+    cur_node = MerkleNode(cur_node, sibling, hasher);
   }
   string calculated = hash_to_hex_string(cur_node.hash, hasher->hash_length());
   cout << "check root hash" << endl;

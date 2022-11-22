@@ -27,6 +27,8 @@ class Hasher {
  public:
   virtual void get_hash(unsigned char *data, int data_len,
                         unsigned char *hash) = 0;
+  virtual void get_hash(unsigned char* din, int block_size,
+                        unsigned char* dout, int num_of_blocks) {}
   int hash_length() const {
     return digest_size;
   }
@@ -48,6 +50,29 @@ class MD_5 : public Hasher {
                 unsigned char* hash) override;
 };
 
+class SHA_256_GPU : public Hasher {
+ public:
+  SHA_256_GPU();
+  void get_hash(unsigned char* data,
+                int data_len,
+                unsigned char* hash) override;
+  void get_hash(unsigned char* din,
+                int block_size,
+                unsigned char* dout,
+                int num_of_blocks) override;
+};
+
+class MD_5_GPU : public Hasher {
+ public:
+  MD_5_GPU();
+  void get_hash(unsigned char* data,
+                int data_len,
+                unsigned char* hash) override;
+  void get_hash(unsigned char* din,
+                int block_size,
+                unsigned char* dout,
+                int num_of_blocks) override;
+};
 
 // Basic data block
 class Block {

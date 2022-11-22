@@ -6,8 +6,8 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-  // init Hasher
-  Hasher* hasher = new SHA_256();
+  // Hasher can be SHA_256 or MD_5 at the moment.
+  Hasher* hasher = new SHA_256_GPU();
 
   BLOCK_SIZE = 1024;
   unsigned char* data;
