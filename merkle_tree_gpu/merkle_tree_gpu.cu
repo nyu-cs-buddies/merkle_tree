@@ -2,6 +2,8 @@
 #include "../cuda_hash_lib/sha256.cu"
 #include "../cuda_hash_lib/config.h"
 #include <cassert>
+#include <openssl/sha.h>
+#include <openssl/md5.h>
 using namespace std;
 
 int BLOCK_SIZE = 1024;
@@ -298,7 +300,7 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
 
   int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1 : data_len / BLOCK_SIZE;
   int in_bytes = num_of_blocks * BLOCK_SIZE;
-  int out_bytes = num_of_blocks * hasher->hash_legnth();
+  int out_bytes = num_of_blocks * hasher->hash_length();
 
   unsigned char *out = (unsigned char *)calloc(out_bytes, sizeof(unsigned char));
   unsigned char *dout, *din;
@@ -311,8 +313,8 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
 
   vector<MerkleNode *> cur_layer_nodes;
   for (int i = 0; i < num_of_blocks; ++i) {
-    string hash_str = hash_to_hex_string(out + i * hasher->hash_legnth(),
-                                         hasher->hash_legnth());
+    string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
+                                         hasher->hash_length());
     MerkleNode *to_add = new MerkleNode(hash_str, hasher);
     cur_layer_nodes.push_back(to_add);
     hashes.push_back(to_add);
