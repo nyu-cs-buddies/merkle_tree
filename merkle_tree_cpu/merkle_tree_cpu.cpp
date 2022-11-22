@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <cassert>
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include "../merkle_tree.hpp"
@@ -12,8 +12,7 @@ string hash_to_hex_string(unsigned char *hash, int size) {
   string result = "";
   for (int i = 0; i < size; i++) {
     snprintf(temp, 3, "%02x", hash[i]);
-    result += temp[0];
-    result += temp[1];
+    result += temp;
   }
   return result;
 }
@@ -160,7 +159,7 @@ MerkleNode::MerkleNode(MerkleNode cur_node, MerkleNode sibling, Hasher* hasher)
       (unsigned char *)calloc(digest_len * 2, sizeof(unsigned char));
   if (sibling.lr == LEFT) {
     memcpy(data, sibling.hash, digest_len);
-    memcpy(data + digest_len, cur_node.hash, SHA256_DIGEST_LENGTH);
+    memcpy(data + digest_len, cur_node.hash, digest_len);
   } else {
     memcpy(data, cur_node.hash, digest_len);
     memcpy(data + digest_len, sibling.hash, digest_len);
@@ -285,19 +284,16 @@ string MerkleTree::root_hash() {
 void MerkleTree::print_root_hash() { cout << root_hash() << endl; }
 
 // constructor with only Hasher
-MerkleTree::MerkleTree(Hasher* hasher_) {
-  hasher = hasher_;
-}
+MerkleTree::MerkleTree(Hasher* hasher_) : hasher(hasher_) {}
 
 // constructor using Blocks
-MerkleTree::MerkleTree(Blocks& blocks_, Hasher* hasher_) {
-  hasher = hasher_;
+MerkleTree::MerkleTree(Blocks& blocks_, Hasher* hasher_) : hasher(hasher_) {
   root = make_tree_from_blocks(blocks_);
 }
 
 // constructor using data in unsigned char and data_len
-MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_) {
-  hasher = hasher_;
+MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_) 
+    : hasher(hasher_) {
   Blocks blocks(data, data_len);
   root = make_tree_from_blocks(blocks);
 }
