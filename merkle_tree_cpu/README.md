@@ -17,10 +17,29 @@ Use it without any arguments to demo with dummy data:
 ```
 
 ## Usage
+### Choose a Hash Algorithm
+Currently, there are two hash algorithms available:
+- SHA256
+- MD5
+
+Before building the Merkle Tree, instantiate a `Hasher` first:
+```
+// SHA256
+Hasher* hasher = new SHA_256();
+```
+or
+```
+// MD5
+Hasher* hasher = new MD_5();
+```
+
 ### Create a MerkleTree from raw data
-`MerkleTree merkle_tree(data, data_len);`
+With `hasher` created in the previous section, we have:
+
+`MerkleTree merkle_tree(data, data_len, hasher);`
 - `data`: `unsigned char *`
 - `data_len`: `int`
+- `hasher`: `Hasher *`
 
 The resulting MerkleTree is at `merkle_tree.root`, and its root hash is
 `merkle_tree.root_hash()`.
@@ -41,12 +60,23 @@ SHA256(data, BLOCK_SIZE, hash); // length of data has to be exact one block.
 string hash_str = hash_to_hex_string(data, SHA256_DIGEST_LENGTH);
 ```
 
+Or, alternatively
+```
+unsigned char* hash =
+      (unsigned char*)calloc(hasher->hash_length(), sizeof(unsigned char));
+hasher->get_hash(data, BLOCK_SIZE, hash);
+string hash_str = hash_to_hex_string(hash, hasher->hash_length());
+string root_hash = merkle_tree.root_hash();
+```
+
 #### Verify with a hash string and the original MerkleTree
 `bool verified = merkle_tree.verify(hash_str);`
 
 #### Verify with a hash string and only sibling MerkleNodes
 ```
-MerkleTree local_tree;
+// need a hasher too
+Hasher* client_hasher = new SHA_256();
+MerkleTree local_tree(client_hasher);
 bool verified = local_tree.verify(hash_str, siblings, root_hash);
 ```
 Where `hash_str` is from our block to be verified, `root_hash` is what
@@ -56,6 +86,7 @@ we already have, and `siblings` from the following:
 ### Verify with raw data
 This breaks input data into blocks in size of `BLOCK_SIZE`, and then
 verifies them all.
+
 `merkle_tree.verify(data, data_len);`
 - `data`: `unsigned char *`
 - `data_len`: `int`

@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <openssl/sha.h>
 extern int BLOCK_SIZE;
 
 // Indicate the node to be the LEFT or RIGHT child of its parent
@@ -18,6 +17,61 @@ enum LeftOrRightSib {
   NA,
   LEFT,
   RIGHT
+};
+
+// Hash algorithms
+class Hasher {
+ protected:
+  int digest_size;
+
+ public:
+  virtual void get_hash(unsigned char *data, int data_len,
+                        unsigned char *hash) = 0;
+  virtual void get_hash(unsigned char* din, int block_size,
+                        unsigned char* dout, int num_of_blocks) {}
+  int hash_length() const {
+    return digest_size;
+  }
+};
+
+class SHA_256 : public Hasher {
+ public:
+  SHA_256();
+  void get_hash(unsigned char* data,
+                int data_len,
+                unsigned char* hash) override;
+};
+
+class MD_5 : public Hasher {
+ public:
+  MD_5();
+  void get_hash(unsigned char* data,
+                int data_len,
+                unsigned char* hash) override;
+};
+
+class SHA_256_GPU : public Hasher {
+ public:
+  SHA_256_GPU();
+  void get_hash(unsigned char* data,
+                int data_len,
+                unsigned char* hash) override;
+  void get_hash(unsigned char* din,
+                int block_size,
+                unsigned char* dout,
+                int num_of_blocks) override;
+};
+
+class MD_5_GPU : public Hasher {
+ public:
+  MD_5_GPU();
+  void get_hash(unsigned char* data,
+                int data_len,
+                unsigned char* hash) override;
+  void get_hash(unsigned char* din,
+                int block_size,
+                unsigned char* dout,
+                int num_of_blocks) override;
 };
 
 // Basic data block
@@ -47,14 +101,15 @@ class MerkleNode {
   MerkleNode* left;
   MerkleNode* right;
   LeftOrRightSib lr;
-  unsigned char hash[SHA256_DIGEST_LENGTH];
+  unsigned char* hash;
+  int digest_len;
 
   MerkleNode();
-  MerkleNode(std::string hash_str);
-  MerkleNode(const Block &block);
-  MerkleNode(MerkleNode* lhs, MerkleNode* rhs);
-  MerkleNode(MerkleNode cur_node, MerkleNode* sibling);
-  MerkleNode(MerkleNode cur_node, MerkleNode sibling);
+  MerkleNode(std::string hash_str, Hasher* hasher);
+  MerkleNode(const Block &block, Hasher* hasher);
+  MerkleNode(MerkleNode* lhs, MerkleNode* rhs, Hasher* hasher);
+  MerkleNode(MerkleNode cur_node, MerkleNode* sibling, Hasher* hasher);
+  MerkleNode(MerkleNode cur_node, MerkleNode sibling, Hasher* hasher);
 
   void print_hash();
   void print_info();
@@ -66,6 +121,7 @@ class MerkleTree {
  private:
   std::vector<MerkleNode*> hashes;
   std::unordered_map<std::string, MerkleNode*> hash_leaf_map;
+  Hasher* hasher;
 
   void delete_tree_walker(MerkleNode* cur_node);
   MerkleNode* make_tree_from_hashes(std::vector<MerkleNode *>& cur_layer_nodes);
@@ -79,9 +135,10 @@ class MerkleTree {
   std::string root_hash();
   void xr();
 
-  MerkleTree() {};
-  MerkleTree(Blocks& blocks_);
-  MerkleTree(unsigned char* data, int data_len);
+  MerkleTree() {}
+  MerkleTree(Hasher* hasher_);
+  MerkleTree(Blocks& blocks_, Hasher* hasher_);
+  MerkleTree(unsigned char* data, int data_len, Hasher* hasher_);
 
   void delete_tree();
   void append(Blocks& new_blocks);

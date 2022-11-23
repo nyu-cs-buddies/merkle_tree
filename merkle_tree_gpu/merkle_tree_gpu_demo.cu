@@ -6,13 +6,16 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
+  // Hasher can be SHA_256 or MD_5 at the moment.
+  Hasher* hasher = new SHA_256_GPU();
+
   BLOCK_SIZE = 1024;
   unsigned char* data;
   int data_len = 0;
   if (argc == 1) {
     // no input file; use dummy data for demo.
     cerr << "Usage: ./merkle_tree_gpu_demo <BLOCK_SIZE> <filename>" << endl;
-    cerr << "For demo, create data filed with '9527' with " << BLOCK_SIZE * 4
+    cerr << "For demo, create data filled with '9527' with " << BLOCK_SIZE * 4
          << " bytes." << endl;
     data = (unsigned char *)malloc(BLOCK_SIZE * 4 * sizeof(unsigned char));
     data_len = BLOCK_SIZE * 4;
@@ -48,7 +51,7 @@ int main(int argc, char *argv[]) {
   Blocks blocks(data, data_len);
 
   // make a MerkleTree from data
-  MerkleTree merkle_tree(data, data_len);
+  MerkleTree merkle_tree(data, data_len, hasher);
   cout << "===== Read all at once. =====" << endl;
   cout << "BLOCK_SIZE = " << BLOCK_SIZE << endl;
   merkle_tree.print();
@@ -68,14 +71,15 @@ int main(int argc, char *argv[]) {
   }
 
   cout << "==== Verify as a client ====" << endl;
-  unsigned char client_hash[SHA256_DIGEST_LENGTH];
-  SHA256(block_to_verify.data, BLOCK_SIZE, client_hash);
-  string hash_str = hash_to_hex_string(client_hash, SHA256_DIGEST_LENGTH);
+  unsigned char* client_hash =
+      (unsigned char*)calloc(hasher->hash_length(), sizeof(unsigned char));
+  hasher->get_hash(block_to_verify.data, BLOCK_SIZE, client_hash);
+  string hash_str = hash_to_hex_string(client_hash, hasher->hash_length());
   string root_hash = merkle_tree.root_hash();
   cout << "hash_str of the block: " << hash_str << endl;
   cout << "root_hash: " << root_hash << endl;
   auto siblings = merkle_tree.find_siblings(hash_str);
-  MerkleTree local_tree;
+  MerkleTree local_tree(hasher);
   if (local_tree.verify(hash_str, siblings, root_hash)) {
     cout << "Yeah! Verified!" << endl;
   }
@@ -99,6 +103,8 @@ int main(int argc, char *argv[]) {
   }
 
   */
+  
+  delete hasher;
 
   return 0;
 }
