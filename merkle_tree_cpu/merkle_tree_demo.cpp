@@ -7,7 +7,7 @@ using namespace std;
 namespace fs = filesystem;
 
 int main(int argc, char *argv[]) {
-  // init Hasher
+  // Hasher can be SHA_256 or MD_5 at the moment.
   Hasher* hasher = new SHA_256();
 
   BLOCK_SIZE = 1024;
@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
   if (argc == 1) {
     // no input file; use dummy data for demo.
     cerr << "Usage: ./merkle_tree_demo <BLOCK_SIZE> <filename>" << endl;
-    cerr << "For demo, create data filed with '9527' with " << BLOCK_SIZE * 4
+    cerr << "For demo, create data filled with '9527' with " << BLOCK_SIZE * 4
          << " bytes." << endl;
     data = (unsigned char *)malloc(BLOCK_SIZE * 4 * sizeof(unsigned char));
     data_len = BLOCK_SIZE * 4;

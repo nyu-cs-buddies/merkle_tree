@@ -2,11 +2,10 @@
 GPU implementation of Merkle Tree.
 
 ## Current Status: WIP
-Project can now be compiled on cuda2@cims with `nvcc`, but no real GPU
-acceleration is applied yet.
+- Hashing has already been moved to GPU.
 
 ## Usage - Demo
-Note: Makefile now `module load gcc-8.2` if you are on CUDA machines.
+Note: Makefile now `module load cuda-11.4 gcc-11.2` if you are on CUDA machines at NYU.
 ```
 ../make gpu
 ```
@@ -22,10 +21,27 @@ Use it without any arguments to demo with dummy data:
 ```
 
 ## Usage
-### Create a MerkleTree from raw data
-`MerkleTree merkle_tree(data, data_len);`
+### Choose a Hash Algorithm
+Currently, there are two hash algorithms available:
+- SHA256
+- MD5
+
+Before building the Merkle Tree, instantiate a `Hasher` first:
+```
+// SHA256
+Hasher* hasher = new SHA_256_GPU();
+```
+or
+```
+// MD5
+Hasher* hasher = new MD_5_GPU();
+```
+
+With `hasher` created in the previous section, we have:
+`MerkleTree merkle_tree(data, data_len, hasher);`
 - `data`: `unsigned char *`
 - `data_len`: `int`
+- `hasher`: `Hasher *`
 
 The resulting MerkleTree is at `merkle_tree.root`, and its root hash is
 `merkle_tree.root_hash()`.
@@ -46,12 +62,23 @@ SHA256(data, BLOCK_SIZE, hash); // length of data has to be exact one block.
 string hash_str = hash_to_hex_string(data, SHA256_DIGEST_LENGTH);
 ```
 
+Or, alternatively
+```
+unsigned char* hash =
+      (unsigned char*)calloc(hasher->hash_length(), sizeof(unsigned char));
+hasher->get_hash(data, BLOCK_SIZE, hash);
+string hash_str = hash_to_hex_string(hash, hasher->hash_length());
+string root_hash = merkle_tree.root_hash();
+```
+
 #### Verify with a hash string and the original MerkleTree
 `bool verified = merkle_tree.verify(hash_str);`
 
 #### Verify with a hash string and only sibling MerkleNodes
 ```
-MerkleTree local_tree;
+// need a hasher too
+Hasher* client_hasher = new SHA_256_GPU();
+MerkleTree local_tree(client_hasher);
 bool verified = local_tree.verify(hash_str, siblings, root_hash);
 ```
 Where `hash_str` is from our block to be verified, `root_hash` is what
