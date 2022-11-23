@@ -38,6 +38,7 @@ Hasher* hasher = new MD_5_GPU();
 ```
 
 With `hasher` created in the previous section, we have:
+
 `MerkleTree merkle_tree(data, data_len, hasher);`
 - `data`: `unsigned char *`
 - `data_len`: `int`
@@ -88,6 +89,7 @@ we already have, and `siblings` from the following:
 ### Verify with raw data
 This breaks input data into blocks in size of `BLOCK_SIZE`, and then
 verifies them all.
+
 `merkle_tree.verify(data, data_len);`
 - `data`: `unsigned char *`
 - `data_len`: `int`
