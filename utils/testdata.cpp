@@ -59,4 +59,3 @@ tuple<string, unsigned char *, unsigned long long> TestData::get_test_data() {
   assert(data != nullptr);
   return {config, data, data_len};
 }
-

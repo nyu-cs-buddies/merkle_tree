@@ -3,8 +3,6 @@
 #include <openssl/md5.h>
 #include "../merkle_tree.hpp"
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
-
 using namespace std;
 
 int BLOCK_SIZE = 1024;
