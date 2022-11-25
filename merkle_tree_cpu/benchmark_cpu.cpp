@@ -10,6 +10,8 @@
 using namespace std;
 using namespace std::chrono;
 
+string PLATFORM = "CPU";
+
 class TestData {
  private:
   int random_seed = 42;
@@ -27,7 +29,9 @@ class TestData {
              << " bytes!" << endl;
         exit(1);
       }
-      config = to_string(data_len) + "," + to_string(block_size);
+      config = PLATFORM + ","
+               + to_string(data_len) + ","
+               + to_string(block_size);
   }
 
   ~TestData() {
@@ -71,8 +75,14 @@ void print_timer() {
        << " ms" << endl;
 }
 
+void print_timer_csv() {
+  cout << timer_name << ","
+       << duration_cast<std::chrono::milliseconds>(elapsed).count()
+       << endl; 
+}
+
 int main(int argc, char *argv[]) {
-  if (argc != 3) {
+  if (argc < 3) {
     cerr << "Usage: ./benchmark_cpu <data_len> <block_size>" << endl;
     exit(1);
   }
@@ -89,7 +99,7 @@ int main(int argc, char *argv[]) {
   MerkleTree mt(data, data_len, hasher);
   stop_timer();
 
-  mt.print_root_hash();
-  print_timer();
+  cerr << mt.root_hash() << endl; // to stderr
+  print_timer_csv();
   return 0;
 }
