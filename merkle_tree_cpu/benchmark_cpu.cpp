@@ -1,5 +1,3 @@
-#include <cassert>
-#include <iostream>
 #include <string>
 #include <tuple>
 #include "../merkle_tree.hpp"

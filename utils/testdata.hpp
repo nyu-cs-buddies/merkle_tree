@@ -1,6 +1,7 @@
 #ifndef TESTDATA_HPP
 #define TESTDATA_HPP
 
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
