@@ -55,7 +55,7 @@ demo_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
 benchmark_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
 	test -d $(BIN_DIR) || mkdir $(BIN_DIR)
 	if [[ "$(HOST)" == "cuda" ]]; then module load cuda-11.4 gcc-11.2; fi; \
-	$(CUDACXX) $(CUDACXXFLAGS) -o bin/$(benchmark_gpu) \
+	$(CUDACXX) $(CUDACXXFLAGS) -o bin/$(BENCHMARK_TARGET_GPU) \
 	$(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu \
-	$(PATH_OF_GPU_VER)/$(benchmark_gpu).cu $(LDFLAGS) 
+	$(PATH_OF_GPU_VER)/$(BENCHMARK_TARGET_GPU).cu $(LDFLAGS) 
 
