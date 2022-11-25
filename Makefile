@@ -24,6 +24,9 @@ BENCHMARK_TARGET_GPU = benchmark_gpu
 TARGET_GPU = merkle_tree_gpu_demo
 PATH_OF_CPU_VER = merkle_tree_cpu
 PATH_OF_GPU_VER = merkle_tree_gpu
+PATH_OF_UTILS = utils
+TIMER = timer
+TESTDATA = testdata
 BIN_DIR = ./bin
 
 all: cpu gpu
@@ -43,6 +46,8 @@ benchmark_cpu : $(PATH_OF_CPU_VER)/$(PATH_OF_CPU_VER).cpp
 	if [[ "$(HOST)" == "cuda" ]]; then module load gcc-11.2; fi; \
 	$(CXX) $(CXXFLAGS) -o bin/$(BENCHMARK_TARGET) \
 	$(PATH_OF_CPU_VER)/$(PATH_OF_CPU_VER).cpp \
+	$(PATH_OF_UTILS)/$(TIMER).cpp \
+	$(PATH_OF_UTILS)/$(TESTDATA).cpp \
 	$(PATH_OF_CPU_VER)/$(BENCHMARK_TARGET).cpp $(LDFLAGS) $(CPU_LDFLAGS)
 
 demo_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
@@ -56,6 +61,8 @@ benchmark_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
 	test -d $(BIN_DIR) || mkdir $(BIN_DIR)
 	if [[ "$(HOST)" == "cuda" ]]; then module load cuda-11.4 gcc-11.2; fi; \
 	$(CUDACXX) $(CUDACXXFLAGS) -o bin/$(BENCHMARK_TARGET_GPU) \
+	$(PATH_OF_UTILS)/$(TIMER).cpp \
+	$(PATH_OF_UTILS)/$(TESTDATA).cpp \
 	$(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu \
 	$(PATH_OF_GPU_VER)/$(BENCHMARK_TARGET_GPU).cu $(LDFLAGS) 
 
