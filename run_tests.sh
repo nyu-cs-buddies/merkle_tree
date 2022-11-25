@@ -14,6 +14,6 @@ block_sizes=(10 100 1000 10000)
 for data_len in ${data_lens[@]}; do
     for block_size in ${block_sizes[@]}; do
         ./bin/benchmark_cpu ${data_len} ${block_size}
-        ./bin/benchmark_cpu ${data_len} ${block_size}
+        ./bin/benchmark_gpu ${data_len} ${block_size}
     done
 done
