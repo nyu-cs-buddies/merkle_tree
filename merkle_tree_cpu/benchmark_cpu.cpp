@@ -11,8 +11,11 @@ string CACHE_PATH = "cached_test_data";
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {
-    cerr << "Usage: ./benchmark_cpu <data_len> <block_size>" << endl;
+    cerr << "Usage: ./benchmark_cpu <data_len> <block_size> [--no-cache]"
+         << endl;
     exit(1);
+  } else if (argc == 4 && strcmp(argv[3], "--no-cache") == 0) {
+    CACHE_PATH = "NO_CACHE";
   }
   string config = "";
   unsigned char* data = nullptr;

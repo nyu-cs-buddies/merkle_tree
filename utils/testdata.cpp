@@ -4,12 +4,14 @@ using namespace std;
 namespace fs = filesystem;
 
 void TestData::generate_test_data() {
-  cerr << "Generating test data and storing it to a cache file." << endl;
   default_random_engine rng(random_seed);
   uniform_int_distribution<int> rng_dist(0, 255);
 
   for (auto i = 0; i < data_len; i++) {
     data[i] = (unsigned char)(rng_dist(rng));
+  }
+  if (cache_path == "NO_CACHE") {
+    return;
   }
   string test_data_path = cache_path;
   fs::path p{test_data_path};
@@ -18,9 +20,13 @@ void TestData::generate_test_data() {
   ofstream os;
   os.open(p, ios::binary);
   os.write((char *)data, data_len);
+  cerr << "Test data generated and stored to a cache file." << endl;
 }
 
 bool TestData::load_test_data() {
+  if (cache_path == "NO_CACHE") {
+    return false;
+  }
   string test_data_path = cache_path + "/" + to_string(data_len) + ".dat";
   fs::path p{test_data_path};
   if (!fs::exists(p)) {
