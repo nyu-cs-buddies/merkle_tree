@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include "../merkle_tree.hpp"
 
+#pragma GCC diagnostic ignored "-Wdelete-abstract-non-virtual-dtor"
+
 using namespace std;
 namespace fs = filesystem;
 
