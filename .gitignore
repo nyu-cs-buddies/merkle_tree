@@ -37,3 +37,8 @@ bin/
 
 # cached test data
 /cached_test_data
+
+# test results
+/test_results
+*.csv
+
