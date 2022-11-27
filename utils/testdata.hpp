@@ -17,7 +17,7 @@ class TestData {
   unsigned long long block_size = 0;
   std::string platform = "";
   std::string cache_path = "";
-  bool data_loadded = false;
+  bool data_loaded = false;
 
   void generate_test_data();
   bool load_test_data();
