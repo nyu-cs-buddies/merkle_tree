@@ -3,6 +3,7 @@
 #include "../cuda_hash_lib/sha256.cu"
 #include "../cuda_hash_lib/config.h"
 #include <cassert>
+#include <cmath>
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 using namespace std;
@@ -25,8 +26,12 @@ void SHA_256_GPU::get_hash(unsigned char* din,
                             int block_size,
                             unsigned char* dout,
                             int num_of_blocks) {
-  kernel_sha256_hash<<<1, num_of_blocks>>>(din, block_size,
-                                           dout, num_of_blocks);
+  int threadsPerBlock = 1024;
+  int numOfBlocks = ceil(double(num_of_blocks)/ threadsPerBlock);
+  dim3 dimGrid(numOfBlocks);
+  dim3 dimBlock(threadsPerBlock);
+  kernel_sha256_hash<<<dimGrid, dimBlock>>>(din, block_size,
+                                            dout, num_of_blocks);
 }
 
 // MD5
@@ -44,8 +49,12 @@ void MD_5_GPU::get_hash(unsigned char* din,
                         int block_size,
                         unsigned char* dout,
                         int num_of_blocks) {
-  kernel_md5_hash<<<1, num_of_blocks>>>(din, block_size,
-                                        dout, num_of_blocks);
+  int threadsPerBlock = 1024;
+  int numOfBlocks = ceil(double(num_of_blocks)/ threadsPerBlock);
+  dim3 dimGrid(numOfBlocks);
+  dim3 dimBlock(threadsPerBlock);
+  kernel_md5_hash<<<dimGrid, dimBlock>>>(din, block_size,
+                                         dout, num_of_blocks);
 }
 
 
@@ -349,7 +358,8 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
   unsigned char *dout, *din;
   cudaMalloc((void**) &dout, out_bytes);
   cudaMalloc((void**) &din, in_bytes);
-  cudaMemcpy(din, data, in_bytes, cudaMemcpyHostToDevice);
+  cudaMemset(din, 0, in_bytes);
+  cudaMemcpy(din, data, data_len, cudaMemcpyHostToDevice);
   hasher->get_hash(din, BLOCK_SIZE, dout, num_of_blocks);
   // kernel_sha256_hash<<<1, num_of_blocks>>>(din, BLOCK_SIZE, dout, num_of_blocks);
   cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
