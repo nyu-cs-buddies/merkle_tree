@@ -26,7 +26,7 @@ The speed-up charts are as follow (x-axis is `block_size`):
 
 
 ## Generate/Load `TestData`
-```
+```C++
 #include "testdata.hpp"
 
 // cache_path is default to "cached_test_data" in benchmark programs.
@@ -41,7 +41,7 @@ from cache files (or generated and then loaded).
 Test data generation uses `<random>` with a fixed seed (`42`) from C++ library.
 
 ## Usage of `Timer`
-```
+```C++
 #include "timer.hpp"
 
 start_timer("Test_1_GPU");  // insert a config name here
