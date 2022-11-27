@@ -58,10 +58,14 @@ tuple<string, unsigned char *, unsigned long long> TestData::make_test_data() {
   if (!load_test_data()) {
     generate_test_data();
   }
+  data_loaded = true;
   return {config, data, data_len};
 }
 
 tuple<string, unsigned char *, unsigned long long> TestData::get_test_data() {
   assert(data != nullptr);
+  if (!data_loaded) {
+    return make_test_data();
+  }
   return {config, data, data_len};
 }

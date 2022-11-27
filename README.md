@@ -25,6 +25,36 @@ The speed-up charts are as follow (x-axis is `block_size`):
   ![10GB Speed-up Chart](pix/10GB_speedup.png)
 
 
+## Generate/Load `TestData`
+```
+#include "testdata.hpp"
+
+// cache_path is default to "cached_test_data" in benchmark programs.
+TestData td(data_len, block_size, "CPU", cache_path);
+
+// return a tuple of (string, unsigned char*, unsigned long long).
+tie(config, data, data_len) = td.get_test_data();
+```
+`get_test_data()` return the tuple above directly if test data has been loaded
+from cache files (or generated and then loaded).
+
+Test data generation uses `<random>` with a fixed seed (`42`) from C++ library.
+
+## Usage of `Timer`
+```
+#include "timer.hpp"
+
+start_timer("Test_1_GPU");  // insert a config name here
+// do_something_expensive();
+stop_timer();
+
+print_timer();
+// Test_1_GPU:  55688 ms
+
+print_timer_csv();
+// Test_1_GPU,55688
+```
+
 ## Credits
 We use GPU versions of hash algorithms from
 [CUDA Hashing Algorithms Collection](https://github.com/mochimodev/cuda-hashing-algos) by Matt Zweil & The Mochimo Core Contributor Team.

@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 
   Hasher* hasher = new SHA_256_GPU();
   TestData td(data_len, BLOCK_SIZE, PLATFORM, CACHE_PATH);
-  tie(config, data, data_len) = td.make_test_data();
+  tie(config, data, data_len) = td.get_test_data();
 
   start_timer(config);
   MerkleTree mt(data, data_len, hasher);

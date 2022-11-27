@@ -17,16 +17,17 @@ class TestData {
   unsigned long long block_size = 0;
   std::string platform = "";
   std::string cache_path = "";
+  bool data_loadded = false;
 
   void generate_test_data();
   bool load_test_data();
+  std::tuple<std::string, unsigned char*, unsigned long long> make_test_data();
 
  public:
   TestData(unsigned long long data_len_, unsigned long long block_size_,
            std::string platform_, std::string cache_path_);
   ~TestData();
 
-  std::tuple<std::string, unsigned char*, unsigned long long> make_test_data();
   std::tuple<std::string, unsigned char*, unsigned long long> get_test_data();
 };
 
