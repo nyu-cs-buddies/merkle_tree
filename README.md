@@ -42,7 +42,7 @@ MerkleTree mt(data, data_len, hasher, ACCEL_MASK);
 ## Preliminary Results
 By offloading hashing algorithms to the GPU side, we are seeing signigicant
 speed-ups in data sizes larger than 1GB, and it's most significant in 10GB with
-block size set to 100KB in our preliminary tests.
+block size set to 100 bytes in our preliminary tests.
 
 The best speed-up we can achieve at the moment is *78x*.
 
