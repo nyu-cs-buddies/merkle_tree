@@ -205,6 +205,46 @@ __global__ void kernel_sha256_hash_cont(BYTE* indata, WORD inlen, BYTE* outdata,
 	cuda_sha256_final(&ctx, out);
 }
 
+// // Indicate the node to be the LEFT or RIGHT child of its parent
+// enum LeftOrRightSib {
+//   NA,
+//   LEFT,
+//   RIGHT
+// };
+
+// A modified version that also store the parent, left, right.
+__global__ void kernel_sha256_hash_link(BYTE* indata, WORD inlen,
+                                        BYTE* outdata, WORD n_batch,
+                                        BYTE* dout,
+                                        unsigned int* dparents,
+                                        unsigned int* dlefts,
+                                        unsigned int* drights,
+                                        LeftOrRightSib* dlrs)
+{
+	WORD thread = blockIdx.x * blockDim.x + threadIdx.x;
+	if (thread >= n_batch)
+	{
+		return;
+	}
+	BYTE* in = indata  + thread * inlen * 2;
+	BYTE* out = outdata  + thread * SHA256_BLOCK_SIZE;
+
+	CUDA_SHA256_CTX ctx;
+	cuda_sha256_init(&ctx);
+	cuda_sha256_update(&ctx, in, inlen * 2);
+	cuda_sha256_final(&ctx, out);
+
+    // Linking
+    unsigned int p_pos = (out - dout) / SHA256_BLOCK_SIZE;
+    unsigned int l_pos = (in - dout) / inlen;
+    unsigned int r_pos = l_pos + 1;
+    dparents[l_pos] = p_pos;
+    dparents[r_pos] = p_pos;
+    dlefts[p_pos] = l_pos;
+    drights[p_pos] = r_pos;
+    dlrs[l_pos] = LEFT;
+    dlrs[r_pos] = RIGHT;
+}
 
 extern "C"
 {

@@ -414,6 +414,31 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
   unsigned char *dout, *din;
   cudaMalloc((void**) &dout, out_bytes);
   cudaMalloc((void**) &din, in_bytes);
+
+  if (! (din && dout)) {
+    cerr << "Error allocating device memory for din and dout!" << endl;
+    exit(1);
+  }
+
+  unsigned int *dparents, *dlefts, *drights;
+  LeftOrRightSib *dlrs;
+  if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
+    // TODO(allenpthuang): ditto, need to know how to calc.
+    arr_size = num_of_blocks * 2 * 2;
+    parents = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
+    lefts = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
+    rights = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
+    lrs = (LeftOrRightSib *)calloc(arr_size, sizeof(LeftOrRightSib));
+    cudaMalloc((void**) &dparents, arr_size * sizeof(unsigned int));
+    cudaMalloc((void**) &dlefts, arr_size * sizeof(unsigned int));
+    cudaMalloc((void**) &drights, arr_size * sizeof(unsigned int));
+    cudaMalloc((void**) &dlrs, arr_size * sizeof(LeftOrRightSib));
+    if (! (dparents && dlefts && drights && dlrs)) {
+      cerr << "Error allocating device memory for din and dout!" << endl;
+      exit(1);
+    }
+  }
+
   cudaMemset(din, 0, in_bytes);
   cudaMemcpy(din, data, data_len, cudaMemcpyHostToDevice);
 
@@ -437,10 +462,22 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
       int numOfBlocks = ceil(double(n / 2) / threadsPerBlock);
       dim3 dimGrid(numOfBlocks);
       dim3 dimBlock(threadsPerBlock);
-      kernel_sha256_hash_cont<<<dimGrid, dimBlock>>>(dout_left,
-                                                    hasher->hash_length(),
-                                                    dout_right,
-                                                    n / 2);
+      if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
+        kernel_sha256_hash_link<<<dimGrid, dimBlock>>>(dout_left,
+                                                       hasher->hash_length(),
+                                                       dout_right,
+                                                       n / 2,
+                                                       dout,
+                                                       dparents,
+                                                       dlefts,
+                                                       drights,
+                                                       dlrs);
+      } else {
+        kernel_sha256_hash_cont<<<dimGrid, dimBlock>>>(dout_left,
+                                                       hasher->hash_length(),
+                                                       dout_right,
+                                                       n / 2);
+      }
       if (n / 2 > 0 && n % 2 != 0) {
         unsigned char *attach_pos = dout_right + (n / 2) * hasher->hash_length();
         unsigned char *copy_pos = dout_left + (n - 1) * hasher->hash_length();
@@ -452,6 +489,21 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
 
     cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
     cudaFree(dout); cudaFree(din);
+
+    if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
+      cudaMemcpy(parents, dparents,
+                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+      cudaMemcpy(lefts, dlefts,
+                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+      cudaMemcpy(rights, drights,
+                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+      cudaMemcpy(lrs, dlrs,
+                 arr_size * sizeof(LeftOrRightSib), cudaMemcpyDeviceToHost);
+      cudaFree(dparents);
+      cudaFree(dlefts);
+      cudaFree(drights);
+      cudaFree(dlrs);
+    }
 
     unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
     MerkleNode* root_node = new MerkleNode(result_out, hasher->hash_length());

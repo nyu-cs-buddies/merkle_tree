@@ -17,6 +17,7 @@ Currently, we have accelerated two Merkle Tree operations:
 - Creation (`ACCEL_CREATION`): from raw data, make Merkle leaf nodes.
 - Reducation (`ACCEL_REDUCTION`): from all Merkle leaf nodes, derive root node.
   * Still WIP; root hash is available but cannot find siblings yet.
+  * `ACCEL_LINK` available for speed-up evaluation
 
 **(Only applies to GPU version!)**
 To set the acceleration mode, use a bitmask:
@@ -44,21 +45,28 @@ By offloading hashing algorithms to the GPU side, we are seeing signigicant
 speed-ups in data sizes larger than 1GB, and it's most significant in 10GB with
 block size set to 100 bytes in our preliminary tests.
 
-The best speed-up we can achieve at the moment is *78x*.
+The best speed-up we can achieve at the moment is **81x**.
 
 The speed-up charts are as follow (x-axis is `block_size`):
 
-**Creation Acceleration**
+#### Creation Acceleration
 - `data_len = 1000000000` (~ 1GB)
   ![1GB Speed-up Chart](pix/1GB_speedup.png)
 - `data_len = 10000000000` (~ 10GB)
   ![10GB Speed-up Chart](pix/10GB_speedup.png)
 
-**Full Acceleration (Creation + Reduction)**
+#### Full Acceleration (Creation + Reduction)
 - `data_len = 1000000000` (~ 1GB)
   ![1GB Speed-up Chart](pix/1GB_speedup_full.png)
 - `data_len = 10000000000` (~ 10GB)
   ![10GB Speed-up Chart](pix/10GB_speedup_full.png)
+
+#### Full Acceleration + `ACCEL_LINK`
+We can see slight overhead compared to the above.
+- `data_len = 1000000000` (~ 1GB)
+  ![1GB Speed-up Chart](pix/1GB_speedup_link.png)
+- `data_len = 10000000000` (~ 10GB)
+  ![10GB Speed-up Chart](pix/10GB_speedup_link.png)
 
 ## Generate/Load `TestData`
 ```C++
