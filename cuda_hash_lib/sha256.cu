@@ -189,9 +189,8 @@ __global__ void kernel_sha256_hash(BYTE* indata, WORD inlen, BYTE* outdata, WORD
 	cuda_sha256_final(&ctx, out);
 }
 
-
-__global__ void kernel_sha256_hash_cont(BYTE* indata, WORD inlen, BYTE* outdata,
-										WORD n_batch)
+// A modified version that takes two blocks of hashes as input
+__global__ void kernel_sha256_hash_cont(BYTE* indata, WORD inlen, BYTE* outdata, WORD n_batch)
 {
 	WORD thread = blockIdx.x * blockDim.x + threadIdx.x;
 	if (thread >= n_batch)
