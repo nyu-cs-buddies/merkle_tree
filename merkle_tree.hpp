@@ -23,7 +23,7 @@ enum LeftOrRightSib {
 #define NO_ACCEL          1
 #define ACCEL_CREATION    2
 #define ACCEL_REDUCTION   4
-#define ACCEL_RESERVED_1  8
+#define ACCEL_LINK        8
 #define ACCEL_RESERVED_2  16
 
 // Hash algorithms
@@ -134,6 +134,13 @@ class MerkleTree {
   std::vector<MerkleNode*> hashes;
   std::unordered_map<std::string, MerkleNode*> hash_leaf_map;
   Hasher* hasher;
+
+  // for GPU version node linking
+  unsigned int* parents;
+  unsigned int* lefts;
+  unsigned int* rights;
+  LeftOrRightSib* lrs;
+  unsigned int arr_size;
 
   void delete_tree_walker(MerkleNode* cur_node);
   MerkleNode* make_tree_from_hashes(std::vector<MerkleNode *>& cur_layer_nodes);
