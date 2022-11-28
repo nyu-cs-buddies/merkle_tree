@@ -3,6 +3,12 @@
 #include <unistd.h>
 #include "../merkle_tree.hpp"
 
+// For debugging (to print tree from TestData)
+#if 0
+#include <tuple>
+#include "../utils/testdata.hpp"
+#endif
+
 using namespace std;
 namespace fs = filesystem;
 
@@ -102,6 +108,20 @@ int main(int argc, char *argv[]) {
   }
 
   */
+
+  // For debugging
+  // To print merkle tree of a specific TestData(10000,100)
+  #if 0
+  string config = "";
+  unsigned char* test_data;
+  unsigned long long test_data_len = 0;
+  TestData td(10000, 100, "CPU", "cached_test_data");
+  tie(config, test_data, test_data_len) = td.get_test_data();
+  BLOCK_SIZE = 100;
+  MerkleTree mt(test_data, test_data_len, hasher);
+  cout << "TestData td(10000, 100): " << config << endl;
+  mt.print();
+  #endif
 
   delete hasher;
 

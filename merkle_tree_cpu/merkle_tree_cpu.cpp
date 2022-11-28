@@ -93,6 +93,13 @@ void Blocks::add_blocks(Blocks &new_blocks) {
 //
 // class MerkleNode
 //
+MerkleNode::MerkleNode(unsigned char* hash_, int digest_len_)
+    : parent(nullptr), left(nullptr), right(nullptr), lr(NA),
+      hash(nullptr), digest_len(digest_len_) {
+  hash = new unsigned char[digest_len];
+  memcpy(hash, hash_, digest_len);
+}
+
 MerkleNode::MerkleNode()
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA),
       hash(nullptr), digest_len(0) {}

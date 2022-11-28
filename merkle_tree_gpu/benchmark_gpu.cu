@@ -10,6 +10,8 @@ using namespace std;
 string PLATFORM = "GPU";
 string CACHE_PATH = "cached_test_data";
 
+unsigned short ACCEL_MASK = ACCEL_CREATION | ACCEL_REDUCTION;
+
 int main(int argc, char *argv[]) {
   if (argc < 3) {
     cerr << "Usage: ./benchmark_gpu <data_len> <block_size> [--no-cache]"
@@ -28,7 +30,7 @@ int main(int argc, char *argv[]) {
   tie(config, data, data_len) = td.get_test_data();
 
   start_timer(config);
-  MerkleTree mt(data, data_len, hasher);
+  MerkleTree mt(data, data_len, hasher, ACCEL_MASK);
   stop_timer();
 
   cerr << mt.root_hash() << endl; // to stderr
