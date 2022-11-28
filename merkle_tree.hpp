@@ -19,6 +19,13 @@ enum LeftOrRightSib {
   RIGHT
 };
 
+// GPU acceration bit masks
+#define NO_ACCEL          1
+#define ACCEL_CREATION    2
+#define ACCEL_REDUCTION   4
+#define ACCEL_RESERVED_1  8
+#define ACCEL_RESERVED_2  16
+
 // Hash algorithms
 class Hasher {
  protected:
@@ -105,12 +112,17 @@ class MerkleNode {
   int digest_len;
 
   MerkleNode();
+  MerkleNode(unsigned char* hash, int digest_len_);
   MerkleNode(std::string hash_str, Hasher* hasher);
   MerkleNode(const Block &block, Hasher* hasher);
   MerkleNode(MerkleNode* lhs, MerkleNode* rhs, Hasher* hasher);
   MerkleNode(MerkleNode cur_node, MerkleNode* sibling, Hasher* hasher);
   MerkleNode(MerkleNode cur_node, MerkleNode sibling, Hasher* hasher);
 
+  // TODO(allenpthuang): potential memory leak here
+  // ~MerkleNode() {
+  //   delete hash;
+  // }
   void print_hash();
   void print_info();
 };
@@ -139,6 +151,8 @@ class MerkleTree {
   MerkleTree(Hasher* hasher_);
   MerkleTree(Blocks& blocks_, Hasher* hasher_);
   MerkleTree(unsigned char* data, int data_len, Hasher* hasher_);
+  MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
+             unsigned short accel_mask);
 
   void delete_tree();
   void append(Blocks& new_blocks);

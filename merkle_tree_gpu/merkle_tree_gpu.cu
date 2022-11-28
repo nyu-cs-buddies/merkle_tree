@@ -148,6 +148,14 @@ MerkleNode::MerkleNode()
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA),
       hash(nullptr), digest_len(0) {}
 
+MerkleNode::MerkleNode(unsigned char* hash_, int digest_len_)
+    : parent(nullptr), left(nullptr), right(nullptr), lr(NA),
+      hash(nullptr), digest_len(digest_len_) {
+  hash = new unsigned char[digest_len];
+  memset(hash, 0, digest_len);
+  memcpy(hash, hash_, digest_len);
+}
+
 // make a MerkleNode with a specific hash_str
 MerkleNode::MerkleNode(string hash_str, Hasher* hasher)
     : parent(nullptr), left(nullptr), right(nullptr), lr(NA),
@@ -365,6 +373,7 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
   cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
   cudaFree(dout); cudaFree(din);
 
+  // out has all hashes
   vector<MerkleNode *> cur_layer_nodes;
   for (int i = 0; i < num_of_blocks; ++i) {
     string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
@@ -376,6 +385,99 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
   }
 
   root = make_tree_from_hashes(hashes);
+}
+
+int next_pow_of_2(int input) {
+  int r = 0;
+  while (input >>= 1) {
+    r++;
+  }
+  return r;
+}
+
+// Further acceleration
+MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
+                       unsigned short accel_mask)
+    : hasher(hasher_) {
+  if ((accel_mask & NO_ACCEL) == NO_ACCEL) {
+    Blocks blocks(data, data_len);
+    root = make_tree_from_blocks(blocks);
+    return;
+  }
+  int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1 : data_len / BLOCK_SIZE;
+  int in_bytes = num_of_blocks * BLOCK_SIZE;
+  // TODO(allenpthuang): need to know how to calc out_bytes
+  int out_bytes = num_of_blocks * hasher->hash_length() * 2 * 2;
+  // int out_bytes = pow(2, next_pow_of_2(num_of_blocks)) * hasher->hash_length() * 2;
+
+  unsigned char *out = (unsigned char *)calloc(out_bytes, sizeof(unsigned char));
+  unsigned char *dout, *din;
+  cudaMalloc((void**) &dout, out_bytes);
+  cudaMalloc((void**) &din, in_bytes);
+  cudaMemset(din, 0, in_bytes);
+  cudaMemcpy(din, data, data_len, cudaMemcpyHostToDevice);
+
+  unsigned char *dout_left;
+  unsigned char *dout_right = dout;
+
+  hasher->get_hash(din, BLOCK_SIZE, dout, num_of_blocks);
+
+  if ((accel_mask & (ACCEL_CREATION | ACCEL_REDUCTION))
+        == (ACCEL_CREATION | ACCEL_REDUCTION)) {
+    bool attached = false;
+    for (auto n = num_of_blocks; n > 0; n /= 2) {
+      dout_left = dout_right;
+      if (attached) {
+        n += 1;
+        attached = false;
+      }
+      dout_right += n * hasher->hash_length();
+
+      int threadsPerBlock = 1024;
+      int numOfBlocks = ceil(double(n / 2) / threadsPerBlock);
+      dim3 dimGrid(numOfBlocks);
+      dim3 dimBlock(threadsPerBlock);
+      kernel_sha256_hash_cont<<<dimGrid, dimBlock>>>(dout_left,
+                                                    hasher->hash_length(),
+                                                    dout_right,
+                                                    n / 2);
+      if (n / 2 > 0 && n % 2 != 0) {
+        unsigned char *attach_pos = dout_right + (n / 2) * hasher->hash_length();
+        unsigned char *copy_pos = dout_left + (n - 1) * hasher->hash_length();
+        cudaMemcpy(attach_pos, copy_pos, hasher->hash_length(),
+                  cudaMemcpyDeviceToDevice);
+        attached = true;
+      }
+    }
+
+    cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
+    cudaFree(dout); cudaFree(din);
+
+    unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
+    MerkleNode* root_node = new MerkleNode(result_out, hasher->hash_length());
+    root = root_node;
+    return;
+  }
+
+  if ((accel_mask & ACCEL_CREATION) == ACCEL_CREATION) {
+    cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
+    cudaFree(dout);
+    cudaFree(din);
+
+    // out has all hashes
+    vector<MerkleNode *> cur_layer_nodes;
+    for (int i = 0; i < num_of_blocks; ++i) {
+      string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
+                                           hasher->hash_length());
+      MerkleNode *to_add = new MerkleNode(hash_str, hasher);
+      cur_layer_nodes.push_back(to_add);
+      hashes.push_back(to_add);
+      hash_leaf_map[hash_str] = to_add;
+    }
+
+    root = make_tree_from_hashes(hashes);
+    return;
+  }
 }
 
 // delete the MerkleTree

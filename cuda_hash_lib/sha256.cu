@@ -189,6 +189,24 @@ __global__ void kernel_sha256_hash(BYTE* indata, WORD inlen, BYTE* outdata, WORD
 	cuda_sha256_final(&ctx, out);
 }
 
+
+__global__ void kernel_sha256_hash_cont(BYTE* indata, WORD inlen, BYTE* outdata,
+										WORD n_batch)
+{
+	WORD thread = blockIdx.x * blockDim.x + threadIdx.x;
+	if (thread >= n_batch)
+	{
+		return;
+	}
+	BYTE* in = indata  + thread * inlen * 2;
+	BYTE* out = outdata  + thread * SHA256_BLOCK_SIZE;
+	CUDA_SHA256_CTX ctx;
+	cuda_sha256_init(&ctx);
+	cuda_sha256_update(&ctx, in, inlen * 2);
+	cuda_sha256_final(&ctx, out);
+}
+
+
 extern "C"
 {
 void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
