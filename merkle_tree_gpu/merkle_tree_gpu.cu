@@ -395,6 +395,36 @@ int next_pow_of_2(int input) {
   return r;
 }
 
+
+MerkleNode* make_merkle_tree_root(unsigned int arr_size,
+                                  unsigned int num_of_leaves,
+                                  unsigned char* hashes,
+                                  unsigned int hash_size,
+                                  unsigned int* dparents,
+                                  unsigned int* dlefts,
+                                  unsigned int* drights,
+                                  LeftOrRightSib* dlrs) {
+  // TODO(allenpthuang): nasty choice to allocate memory here
+  MerkleNode *nodes = new MerkleNode[arr_size];
+  MerkleNode *dnodes;
+  cudaMalloc((void**) &dnodes, arr_size * sizeof(MerkleNode));
+  cudaMemset(dnodes, 0, arr_size * sizeof(MerkleNode));
+  int threadsPerBlock = 1024;
+  int numOfBlocks = ceil(double(arr_size) / threadsPerBlock);
+  dim3 dimGrid(numOfBlocks);
+  dim3 dimBlock(threadsPerBlock);
+  kernel_link_merklenode<<<dimGrid, dimBlock>>>(hashes, hash_size,
+                                                dparents, dlefts,
+                                                drights, dlrs,
+                                                nodes, dnodes, arr_size,
+                                                num_of_leaves);
+  cudaMemcpy(nodes, dnodes, arr_size * sizeof(MerkleNode),
+             cudaMemcpyDeviceToHost);
+  cudaFree(dnodes);
+  nodes[arr_size - 1].parent = nullptr;
+  return &nodes[arr_size - 1];
+}
+
 // Further acceleration
 MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
                        unsigned short accel_mask)
@@ -487,22 +517,34 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
       }
     }
 
+    unsigned int result_size = (dout_right - dout) / hasher->hash_length();
+
     cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
     cudaFree(dout); cudaFree(din);
 
     if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
       cudaMemcpy(parents, dparents,
-                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+                 arr_size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       cudaMemcpy(lefts, dlefts,
-                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+                 arr_size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       cudaMemcpy(rights, drights,
-                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+                 arr_size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
       cudaMemcpy(lrs, dlrs,
                  arr_size * sizeof(LeftOrRightSib), cudaMemcpyDeviceToHost);
+      root = make_merkle_tree_root(result_size, num_of_blocks, out,
+                                   hasher->hash_length(),
+                                   dparents, dlefts, drights, dlrs);
       cudaFree(dparents);
       cudaFree(dlefts);
       cudaFree(drights);
       cudaFree(dlrs);
+      // Note(allenpthuang): add leaves to the hashmap for lookup
+      for (unsigned int i = 0; i < num_of_blocks; i++) {
+        string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
+                                             hasher->hash_length());
+        hash_leaf_map[hash_str] = root + i * sizeof(MerkleNode);
+      }
+      return;
     }
 
     unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
@@ -571,15 +613,20 @@ vector<MerkleNode *> MerkleTree::find_siblings(MerkleNode *leaf) {
 
 // return a vector of the sibling MerkleNodes along the path to the root.
 vector<MerkleNode> MerkleTree::find_siblings(string hash_str) {
-  MerkleNode *cur_node;
-  auto it = hash_leaf_map.find(hash_str);
-  if (it != hash_leaf_map.end()) {
-    cur_node = it->second;
-  } else {
+  if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
     return {};
   }
+  MerkleNode *cur_node = hash_leaf_map[hash_str];
 
+  auto sbs = find_siblings(cur_node);
+  cout << "# sbs = " << sbs.size() << endl;
   vector<MerkleNode> result;
+  if (cur_node == nullptr) {
+    cerr << "cur_node is nullptr!" << endl;
+  }
+  if (cur_node->parent == nullptr) {
+    cerr << "cur_node->parent is nullptr!" << endl;
+  }
   while (cur_node != nullptr && cur_node->parent != nullptr) {
     MerkleNode tmp;
     if (cur_node->lr == LEFT) {
@@ -623,6 +670,7 @@ bool MerkleTree::verify(string hash_str) {
   MerkleNode *node = hash_leaf_map[hash_str];
   MerkleNode input = (*node);
   auto siblings = find_siblings(node);
+  cout << "# sbs = " << siblings.size() << endl;
   return verify(input, siblings);
 }
 
