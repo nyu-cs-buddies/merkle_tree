@@ -544,6 +544,11 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
                                              hasher->hash_length());
         hash_leaf_map[hash_str] = root + i * sizeof(MerkleNode);
       }
+
+      for (const auto& [str, ignore] : hash_leaf_map) {
+        cerr << str << endl;
+      }
+
       return;
     }
 
