@@ -15,4 +15,5 @@
 
 #pragma once
 #include "config.h"
+__global__ void kernel_md5_hash(BYTE* indata, WORD inlen, BYTE* outdata, WORD n_batch);
 void mcm_cuda_md5_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch);

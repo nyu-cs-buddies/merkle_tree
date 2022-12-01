@@ -1,7 +1,6 @@
 #include "../merkle_tree.hpp"
-#include "../cuda_hash_lib/md5.cu"
-#include "../cuda_hash_lib/sha256.cu"
-#include "../cuda_hash_lib/config.h"
+#include "../cuda_hash_lib/md5.cuh"
+#include "../cuda_hash_lib/sha256.cuh"
 #include <cassert>
 #include <cmath>
 #include <openssl/sha.h>
