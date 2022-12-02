@@ -147,7 +147,12 @@ class MerkleTree {
   MerkleNode* make_tree_from_blocks(Blocks& blocks);
   bool verify(MerkleNode cur_node, std::vector<MerkleNode*>& siblings);
 
- public:
+  // for different GPU acceleration methods
+  MerkleNode* make_tree_no_accel(unsigned char* data, unsigned int data_len);
+  MerkleNode* make_tree_gpu_accel(unsigned char* data, unsigned int data_len,
+                                  unsigned short accel_mask);
+
+public:
   MerkleNode* root;
   void print();
   void print_root_hash();
