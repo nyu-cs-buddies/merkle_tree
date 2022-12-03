@@ -7,7 +7,7 @@ void TestData::generate_test_data() {
   default_random_engine rng(random_seed);
   uniform_int_distribution<int> rng_dist(0, 255);
 
-  for (auto i = 0; i < data_len; i++) {
+  for (unsigned int i = 0; i < data_len; i++) {
     data[i] = (unsigned char)(rng_dist(rng));
   }
   if (cache_path == "NO_CACHE") {
