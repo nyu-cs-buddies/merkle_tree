@@ -390,7 +390,7 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
   hasher->get_hash(din, BLOCK_SIZE, dout, num_of_blocks);
 
   // stop here and use CPU to make a MerkleTree
-  if ((accel_mask & ACCEL_CREATION) == ACCEL_CREATION) {
+  if ((accel_mask & ~ACCEL_CREATION) == 0) {
     cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
     cudaFree(dout);
     cudaFree(din);
@@ -462,7 +462,7 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
     dim3 dimBlock(threadsPerBlock);
 
     // ACCEL_LINK not set, can only get root_hash (without node linking)
-    if (! (accel_mask & ACCEL_LINK) == ACCEL_LINK) {
+    if ((accel_mask & ACCEL_LINK) != ACCEL_LINK) {
       kernel_sha256_hash_cont<<<dimGrid, dimBlock>>>(dout_left,
                                                      hasher->hash_length(),
                                                      dout_right, n / 2);
