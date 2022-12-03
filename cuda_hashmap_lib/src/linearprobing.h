@@ -1,6 +1,6 @@
 #pragma once
-#include "../../merkle_tree.hpp"
 
+class MerkleNode;
 struct KeyValue
 {
     uint32_t key;
