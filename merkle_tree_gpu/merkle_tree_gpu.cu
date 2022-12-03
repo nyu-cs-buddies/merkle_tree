@@ -365,9 +365,10 @@ MerkleTree::MerkleTree(Blocks& blocks_, Hasher* hasher_) : hasher(hasher_) {
 MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
     : MerkleTree(data, data_len, hasher_, NO_ACCEL) {}
 
-KeyValue* create_gpu_hashmap(KeyValue* kvs, uint32_t n) {
+
+KeyValue* create_gpu_hashmap(unsigned char* dhashes, MerkleNode* nodes, uint32_t n) {
   KeyValue* hashtable_head = create_hashtable();
-  insert_hashtable(hashtable_head, kvs, n);
+  insert_hashtable_dmem(hashtable_head, dhashes, nodes, n);
   return hashtable_head;
 }
 
@@ -531,7 +532,9 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
 
 
   cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
-  cudaFree(dout);
+  if ((accel_mask & ACCEL_HASHMAP) != ACCEL_HASHMAP) {
+    cudaFree(dout);
+  }
   cudaFree(din);
 
   MerkleNode* root_node;
@@ -556,7 +559,8 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
     cudaFree(dlrs);
     // Note(allenpthuang): add leaves to the hashmap for lookup
     if ((accel_mask & ACCEL_HASHMAP) == ACCEL_HASHMAP) {
-      // do something
+      gpu_hash_leaf_map = create_gpu_hashmap(dout, nodes, num_of_blocks);
+      cudaFree(dout);
     } else {
       for (unsigned int i = 0; i < num_of_blocks; i++) {
         string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),

@@ -2,6 +2,7 @@
 #include "stdint.h"
 #include "vector"
 #include "linearprobing.h"
+#include "../../merkle_tree.hpp"
 
 // 32 bit Murmur3 hash
 __device__ uint32_t hash(uint32_t k)
@@ -51,7 +52,46 @@ __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, u
         }
     }
 }
+
+// Insert the key/values in kvs into the hashtable
+__global__ void gpu_hashtable_insert_dmem(KeyValue* hashtable, unsigned char* hashes, MerkleNode* nodes, unsigned int numkvs)
+{
+    unsigned int threadid = blockIdx.x*blockDim.x + threadIdx.x;
+    if (threadid < numkvs)
+    {
+        uint32_t key = hashes[threadid];
+        uint32_t value = nodes[threadid];
+        uint32_t slot = hash(key);
+
+        while (true)
+        {
+            uint32_t prev = atomicCAS(&hashtable[slot].key, kEmpty, key);
+            if (prev == kEmpty || prev == key)
+            {
+                hashtable[slot].value = value;
+                return;
+            }
+
+            slot = (slot + 1) & (kHashTableCapacity-1);
+        }
+    }
+}
  
+void insert_hashtable_dmem(KeyValue* pHashTable, unsigned char* dhashes,
+                           MerkleNode* nodes, uint32_t num_kvs)
+{
+    // Have CUDA calculate the thread block size
+    int mingridsize;
+    int threadblocksize;
+    cudaOccupancyMaxPotentialBlockSize(&mingridsize, &threadblocksize, gpu_hashtable_insert_dmem, 0, 0);
+
+    // Insert all the keys into the hash table
+    int gridsize = ((uint32_t)num_kvs + threadblocksize - 1) / threadblocksize;
+    gpu_hashtable_insert_dmem<<<gridsize, threadblocksize>>>(pHashTable, dhashes, nodes, (uint32_t)num_kvs);
+
+}
+
+
 void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kvs)
 {
     // Copy the keyvalues to the GPU

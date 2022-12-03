@@ -15,6 +15,8 @@ const uint32_t kEmpty = 0xffffffff;
 KeyValue* create_hashtable();
 
 void insert_hashtable(KeyValue* hashtable, const KeyValue* kvs, uint32_t num_kvs);
+void insert_hashtable_dmem(KeyValue* pHashTable, unsigned char* dhashes,
+                           MerkleNode* nodes, uint32_t num_kvs);
 
 void lookup_hashtable(KeyValue* hashtable, KeyValue* kvs, uint32_t num_kvs);
 

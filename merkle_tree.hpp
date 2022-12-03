@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "cuda_hashmap_lib/src/linearprobing.h"
 
 extern int BLOCK_SIZE;
 
@@ -137,6 +138,7 @@ class MerkleTree {
   std::vector<MerkleNode*> hashes;
   std::unordered_map<std::string, MerkleNode*> hash_leaf_map;
   Hasher* hasher;
+  KeyValue* gpu_hash_leaf_map;
 
   // for GPU version node linking
   unsigned int* parents;
