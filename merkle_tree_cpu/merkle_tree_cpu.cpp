@@ -176,7 +176,7 @@ MerkleNode::MerkleNode(MerkleNode cur_node, MerkleNode sibling, Hasher* hasher)
 
 // print the hash of a MerkleNode in hex string format
 void MerkleNode::print_hash() {
-  for (int i = 0; i < digest_len; i++) {
+  for (unsigned int i = 0; i < digest_len; i++) {
     printf("%02x", hash[i]);
   }
   cout << endl;

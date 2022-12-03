@@ -16,10 +16,7 @@
 /*************************** HEADER FILES ***************************/
 #include <stdlib.h>
 #include <memory.h>
-extern "C" {
 #include "sha256.cuh"
-#include "../merkle_tree.hpp"
-}
 /****************************** MACROS ******************************/
 #define SHA256_BLOCK_SIZE 32            // SHA256 outputs a 32 byte digest
 
@@ -289,8 +286,6 @@ __global__ void kernel_link_merklenode(BYTE* hashes, WORD hash_size,
 // }
 
 
-extern "C"
-{
 void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 {
 	BYTE *cuda_indata;
@@ -311,5 +306,4 @@ void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 	}
 	cudaFree(cuda_indata);
 	cudaFree(cuda_outdata);
-}
 }
