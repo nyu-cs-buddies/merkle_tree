@@ -51,7 +51,9 @@ int main(int argc, char *argv[]) {
   Blocks blocks(data, data_len);
 
   // make a MerkleTree from data
-  MerkleTree merkle_tree(data, data_len, hasher);
+  // MerkleTree merkle_tree(data, data_len, hasher);
+  MerkleTree merkle_tree(data, data_len, hasher,
+                         ACCEL_CREATION | ACCEL_REDUCTION | ACCEL_LINK);
   cout << "===== Read all at once. =====" << endl;
   cout << "BLOCK_SIZE = " << BLOCK_SIZE << endl;
   merkle_tree.print();
