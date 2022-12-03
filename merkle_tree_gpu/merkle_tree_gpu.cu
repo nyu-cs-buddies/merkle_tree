@@ -1,6 +1,7 @@
 #include "../merkle_tree.hpp"
 #include "../cuda_hash_lib/md5.cuh"
 #include "../cuda_hash_lib/sha256.cuh"
+#include "../cuda_hashmap_lib/src/linearprobing.h"
 #include <cassert>
 #include <cmath>
 #include <openssl/sha.h>
@@ -364,6 +365,12 @@ MerkleTree::MerkleTree(Blocks& blocks_, Hasher* hasher_) : hasher(hasher_) {
 MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
     : MerkleTree(data, data_len, hasher_, NO_ACCEL) {}
 
+KeyValue* create_gpu_hashmap(KeyValue* kvs, uint32_t n) {
+  KeyValue* hashtable_head = create_hashtable();
+  insert_hashtable(hashtable_head, kvs, n);
+  return hashtable_head;
+}
+
 MerkleNode* MerkleTree::make_tree_no_accel(unsigned char* data,
                                            unsigned int data_len) {
   Blocks blocks(data, data_len);
@@ -548,11 +555,14 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
     cudaFree(drights);
     cudaFree(dlrs);
     // Note(allenpthuang): add leaves to the hashmap for lookup
-    for (unsigned int i = 0; i < num_of_blocks; i++)
-    {
-      string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
-                                           hasher->hash_length());
-      hash_leaf_map[hash_str] = nodes + i * sizeof(MerkleNode);
+    if ((accel_mask & ACCEL_HASHMAP) == ACCEL_HASHMAP) {
+      // do something
+    } else {
+      for (unsigned int i = 0; i < num_of_blocks; i++) {
+        string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
+                                            hasher->hash_length());
+        hash_leaf_map[hash_str] = nodes + i * sizeof(MerkleNode);
+      }
     }
 
     // for (const auto& [str, ignore] : hash_leaf_map) {

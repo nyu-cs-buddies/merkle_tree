@@ -24,7 +24,7 @@ enum LeftOrRightSib {
 #define ACCEL_CREATION    2
 #define ACCEL_REDUCTION   4
 #define ACCEL_LINK        8
-#define ACCEL_RESERVED_2  16
+#define ACCEL_HASHMAP     16
 
 // Hash algorithms
 class Hasher {
