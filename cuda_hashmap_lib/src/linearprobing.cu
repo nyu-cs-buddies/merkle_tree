@@ -2,7 +2,6 @@
 #include "stdint.h"
 #include "vector"
 #include "linearprobing.h"
-#include "../../merkle_tree.hpp"
 
 // 32 bit Murmur3 hash
 __device__ uint32_t hash(uint32_t k)

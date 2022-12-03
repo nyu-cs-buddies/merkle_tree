@@ -1,4 +1,5 @@
 #pragma once
+#include "../../merkle_tree.hpp"
 
 struct KeyValue
 {
