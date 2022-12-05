@@ -63,11 +63,12 @@ The speed-up charts are as follow (x-axis is `block_size`):
 - `data_len = 10000000000` (~ 10GB)
   ![10GB Speed-up Chart](pix/10GB_speedup_lv1.png)
 
+<!--
 #### Creation + Reduction
 - `data_len = 1000000000` (~ 1GB)
   ![1GB Speed-up Chart](pix/1GB_speedup_lv2.png)
 - `data_len = 10000000000` (~ 10GB)
-  ![10GB Speed-up Chart](pix/10GB_speedup_lv2.png)
+  ![10GB Speed-up Chart](pix/10GB_speedup_lv2.png) -->
 
 #### Creation + Reduction + Link
 - `data_len = 1000000000` (~ 1GB)
