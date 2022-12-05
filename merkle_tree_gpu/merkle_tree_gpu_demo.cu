@@ -5,6 +5,10 @@
 
 using namespace std;
 
+void print_node(MerkleNode* node) {
+  cout << hash_to_hex_string(node->hash, node->digest_len) << endl;
+}
+
 int main(int argc, char *argv[]) {
   // Hasher can be SHA_256 or MD_5 at the moment.
   Hasher* hasher = new SHA_256_GPU();
@@ -51,12 +55,32 @@ int main(int argc, char *argv[]) {
   Blocks blocks(data, data_len);
 
   // make a MerkleTree from data
-  MerkleTree merkle_tree(data, data_len, hasher);
+  // MerkleTree merkle_tree(data, data_len, hasher);
+  unsigned short ACCEL_MASK = ACCEL_CREATION | ACCEL_REDUCTION | ACCEL_LINK;
+  MerkleTree merkle_tree(data, data_len, hasher, ACCEL_MASK);
   cout << "===== Read all at once. =====" << endl;
   cout << "BLOCK_SIZE = " << BLOCK_SIZE << endl;
   merkle_tree.print();
   cout << "Root hash: ";
   merkle_tree.print_root_hash();
+
+  // cout << "=========== P/L/R pointers testing zone =============" << endl;
+
+  // MerkleNode* root = merkle_tree.root;
+  // cout << "Root" << endl;
+  // print_node(root);
+  // cout << "Left child" << endl;
+  // print_node(root->left);
+  // cout << "Right child" << endl;
+  // print_node(root->right);
+  // cout << "Right child's parent!" << endl;
+  // print_node(root->right->parent);
+  // cout << "Right child's right child!" << endl;
+  // print_node(root->right->right);
+  // cout << "Right child's right child's parent!" << endl;
+  // print_node(root->right->right->parent);
+
+  // cout << "=========== P/L/R ends ==============================" << endl;
 
   int block_idx = 0;
   auto block_to_verify = blocks.blocks()[0];

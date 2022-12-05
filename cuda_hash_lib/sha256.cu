@@ -237,6 +237,55 @@ __global__ void kernel_sha256_hash_link(BYTE* indata, WORD inlen,
     dlrs[r_pos] = RIGHT;
 }
 
+
+// Link MerkleNode
+__global__ void kernel_link_merklenode(BYTE* hashes, WORD hash_size,
+                                       unsigned int* dparent,
+                                       unsigned int* dlefts,
+                                       unsigned int* drights,
+                                       LeftOrRightSib* dlrs,
+                                       MerkleNode* nodes,
+                                       MerkleNode* dnodes, WORD n_nodes,
+                                       WORD num_of_leaves)
+{
+	WORD thread = blockIdx.x * blockDim.x + threadIdx.x;
+	if (thread >= n_nodes)
+	{
+		return;
+	}
+	BYTE* hash = hashes + thread * hash_size;
+	MerkleNode* cur_node = dnodes + thread;
+    cur_node->hash = hash;
+    cur_node->parent = nodes + dparent[thread];
+    cur_node->lr = dlrs[thread];
+    cur_node->digest_len = hash_size;
+    if (thread >= num_of_leaves) {
+        cur_node->left = nodes + dlefts[thread];
+        cur_node->right = nodes + drights[thread];
+    } else {
+        cur_node->left = nullptr;
+        cur_node->right = nullptr;
+    }
+}
+
+// // Add to the hashmap
+// __global__ void kernel_add_to_hashmap(BYTE* leaf_hashes, WORD hash_size,
+//                                       MerkleNode* nodes,
+//                                       //unordered_map<string, MerkleNode*> map,
+//                                       WORD num_of_leaves)
+// {
+// 	WORD thread = blockIdx.x * blockDim.x + threadIdx.x;
+// 	if (thread >= num_of_leaves)
+// 	{
+// 		return;
+// 	}
+// 	BYTE* hash = leaf_hashes + thread * hash_size;
+// 	MerkleNode* cur_node = nodes + thread;
+//     std::string hash_str = hash_to_hex_string(hash, hash_size);
+//     //map[hash_str] = cur_node;
+// }
+
+
 void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 {
 	BYTE *cuda_indata;

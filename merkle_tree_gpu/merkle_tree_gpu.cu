@@ -7,6 +7,16 @@
 #include <openssl/md5.h>
 using namespace std;
 
+#define INFO(msg) \
+    fprintf(stderr, "info: %s:%d: ",__func__, __LINE__); \
+    fprintf(stderr, "%s", msg);
+
+namespace {
+void print_node(MerkleNode* node) {
+  cout << hash_to_hex_string(node->hash, node->digest_len) << endl;
+}
+} // namespace
+
 int BLOCK_SIZE = 1024;
 
 // hash algorithms - GPU versions
@@ -360,6 +370,34 @@ MerkleNode* MerkleTree::make_tree_no_accel(unsigned char* data,
   return make_tree_from_blocks(blocks);
 }
 
+MerkleNode* make_merkle_tree_root(MerkleNode* nodes,
+                                  unsigned int arr_size,
+                                  unsigned int num_of_leaves,
+                                  unsigned char* hashes,
+                                  unsigned int hash_size,
+                                  unsigned int* dparents,
+                                  unsigned int* dlefts,
+                                  unsigned int* drights,
+                                  LeftOrRightSib* dlrs) {
+  MerkleNode *dnodes;
+  cudaMalloc((void**) &dnodes, arr_size * sizeof(MerkleNode));
+  cudaMemset(dnodes, 0, arr_size * sizeof(MerkleNode));
+  int threadsPerBlock = 1024;
+  int numOfBlocks = ceil(double(arr_size) / threadsPerBlock);
+  dim3 dimGrid(numOfBlocks);
+  dim3 dimBlock(threadsPerBlock);
+  kernel_link_merklenode<<<dimGrid, dimBlock>>>(hashes, hash_size,
+                                                dparents, dlefts,
+                                                drights, dlrs,
+                                                nodes, dnodes, arr_size,
+                                                num_of_leaves);
+  cudaMemcpy(nodes, dnodes, arr_size * sizeof(MerkleNode),
+             cudaMemcpyDeviceToHost);
+  cudaFree(dnodes);
+  nodes[arr_size - 1].parent = nullptr;
+  return &nodes[arr_size - 1];
+}
+
 MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
                                             unsigned int data_len,
                                             unsigned short accel_mask) {
@@ -484,13 +522,13 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
     }
   }
 
+
   cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
-  cudaFree(dout); cudaFree(din);
+  cudaFree(dout);
+  cudaFree(din);
 
-  unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
-  MerkleNode* root_node = new MerkleNode(result_out, hasher->hash_length());
-
-  // free memory used by ACCEK_LINK
+  MerkleNode* root_node;
+  // make MerkleTree root and free memory used by ACCEK_LINK
   if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
     cudaMemcpy(parents, dparents,
                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
@@ -500,11 +538,29 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
     cudaMemcpy(lrs, dlrs,
                 arr_size * sizeof(LeftOrRightSib), cudaMemcpyDeviceToHost);
+    unsigned int result_size = (dout_right - dout) / hasher->hash_length();
+    MerkleNode *nodes = new MerkleNode[result_size];
+    root_node = make_merkle_tree_root(nodes, result_size, num_of_blocks, out,
+                                   hasher->hash_length(),
+                                   dparents, dlefts, drights, dlrs);
     cudaFree(dparents);
     cudaFree(dlefts);
     cudaFree(drights);
     cudaFree(dlrs);
+    // Note(allenpthuang): add leaves to the hashmap for lookup
+    for (unsigned int i = 0; i < num_of_blocks; i++)
+    {
+      string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
+                                           hasher->hash_length());
+      hash_leaf_map[hash_str] = nodes + i * sizeof(MerkleNode);
+    }
+
+    // for (const auto& [str, ignore] : hash_leaf_map) {
+    //   cerr << str << endl;
+    // }
   } else { // if ACCEL_LINK is not set, there is no need to keep `out`.
+    unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
+    root_node = new MerkleNode(result_out, hasher->hash_length());
     free(out);
   }
 
@@ -544,12 +600,15 @@ void MerkleTree::append(unsigned char* data, int data_len) {
   append(blocks_to_append);
 }
 
+
+
 // return a vector of the pointer to the sibling MerkleNodes along
 // the path to the root.
 vector<MerkleNode *> MerkleTree::find_siblings(MerkleNode *leaf) {
   vector<MerkleNode *> result;
   MerkleNode *cur_node = leaf;
-  while (cur_node->parent != nullptr) {
+  while (cur_node != nullptr && cur_node->parent != nullptr) {
+    print_node(cur_node);
     if (cur_node->lr == LEFT) {
       result.push_back(cur_node->parent->right);
     } else {
@@ -562,13 +621,10 @@ vector<MerkleNode *> MerkleTree::find_siblings(MerkleNode *leaf) {
 
 // return a vector of the sibling MerkleNodes along the path to the root.
 vector<MerkleNode> MerkleTree::find_siblings(string hash_str) {
-  MerkleNode *cur_node;
-  auto it = hash_leaf_map.find(hash_str);
-  if (it != hash_leaf_map.end()) {
-    cur_node = it->second;
-  } else {
+  if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
     return {};
   }
+  MerkleNode *cur_node = hash_leaf_map[hash_str];
 
   vector<MerkleNode> result;
   while (cur_node != nullptr && cur_node->parent != nullptr) {
