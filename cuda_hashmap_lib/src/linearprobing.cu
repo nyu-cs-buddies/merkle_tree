@@ -2,6 +2,7 @@
 #include "stdint.h"
 #include "vector"
 #include "linearprobing.h"
+#include "../../merkle_tree.hpp"
 
 // 32 bit Murmur3 hash
 __device__ uint32_t hash(uint32_t k)
@@ -52,14 +53,25 @@ __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, u
     }
 }
 
+
 // Insert the key/values in kvs into the hashtable
 __global__ void gpu_hashtable_insert_dmem(KeyValue* hashtable, unsigned char* hashes, MerkleNode* nodes, unsigned int numkvs)
 {
     unsigned int threadid = blockIdx.x*blockDim.x + threadIdx.x;
     if (threadid < numkvs)
     {
-        uint32_t key = hashes[threadid];
-        uint32_t value = nodes[threadid];
+        uintptr_t mptr = (uintptr_t)(nodes + (threadid / 2));
+        unsigned int offset = (threadid % 2) * sizeof(uint32_t);
+
+        uint32_t key;
+        memcpy(&key, hashes + (threadid / 2) * 32 + offset, sizeof(uint32_t)); // SHA256 size
+        // unsigned char* key_ch = (unsigned char*)&key;
+        // for (unsigned int j = 0; j < sizeof(uint32_t); j++) {
+        //     *(key_ch + j) = *(hashes + (threadid / 2) * 32 + offset + j);
+        // }
+        uint32_t value;
+        uint32_t* mptr_u32 = (uint32_t*)&mptr;
+        value = *(mptr_u32 + offset / sizeof(uint32_t));
         uint32_t slot = hash(key);
 
         while (true)
@@ -68,17 +80,22 @@ __global__ void gpu_hashtable_insert_dmem(KeyValue* hashtable, unsigned char* ha
             if (prev == kEmpty || prev == key)
             {
                 hashtable[slot].value = value;
+                // return; // culprit!!
+                // break;
                 return;
             }
 
             slot = (slot + 1) & (kHashTableCapacity-1);
         }
+        return;
     }
 }
- 
+
+
 void insert_hashtable_dmem(KeyValue* pHashTable, unsigned char* dhashes,
                            MerkleNode* nodes, uint32_t num_kvs)
 {
+    num_kvs = num_kvs * 2;
     // Have CUDA calculate the thread block size
     int mingridsize;
     int threadblocksize;
@@ -163,7 +180,7 @@ void lookup_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t num_kvs)
     // Have CUDA calculate the thread block size
     int mingridsize;
     int threadblocksize;
-    cudaOccupancyMaxPotentialBlockSize(&mingridsize, &threadblocksize, gpu_hashtable_insert, 0, 0);
+    cudaOccupancyMaxPotentialBlockSize(&mingridsize, &threadblocksize, gpu_hashtable_lookup, 0, 0);
 
     // Create events for GPU timing
     cudaEvent_t start, stop;
@@ -174,8 +191,9 @@ void lookup_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t num_kvs)
 
     // Insert all the keys into the hash table
     int gridsize = ((uint32_t)num_kvs + threadblocksize - 1) / threadblocksize;
-    gpu_hashtable_insert << <gridsize, threadblocksize >> > (pHashTable, device_kvs, (uint32_t)num_kvs);
+    gpu_hashtable_lookup << <gridsize, threadblocksize >> > (pHashTable, device_kvs, (uint32_t)num_kvs);
 
+    cudaMemcpy(kvs, device_kvs, sizeof(KeyValue) * num_kvs, cudaMemcpyDeviceToHost);
     cudaEventRecord(stop);
 
     cudaEventSynchronize(stop);
@@ -183,8 +201,8 @@ void lookup_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t num_kvs)
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     float seconds = milliseconds / 1000.0f;
-    printf("    GPU lookup %d items in %f ms (%f million keys/second)\n",
-        num_kvs, milliseconds, num_kvs / (double)seconds / 1000000.0f);
+    // printf("    GPU lookup %d items in %f ms (%f million keys/second)\n",
+    //     num_kvs, milliseconds, num_kvs / (double)seconds / 1000000.0f);
 
     cudaFree(device_kvs);
 }

@@ -175,6 +175,7 @@ public:
   void append(Blocks& new_blocks);
   void append(unsigned char* data, int data_len);
 
+  MerkleNode* find_leaf(std::string hash_str);
   std::vector<MerkleNode*> find_siblings(MerkleNode* leaf);
   std::vector<MerkleNode> find_siblings(std::string hash_str);
 

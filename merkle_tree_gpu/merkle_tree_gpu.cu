@@ -614,7 +614,32 @@ void MerkleTree::append(unsigned char* data, int data_len) {
   append(blocks_to_append);
 }
 
+// find a pointer to the leaf MerkleNode
+MerkleNode* MerkleTree::find_leaf(string hash_str) {
+  if (gpu_hash_leaf_map == nullptr
+      && hash_leaf_map.find(hash_str) != hash_leaf_map.end()) {
+    return hash_leaf_map[hash_str];
+  }
+  unsigned char* hash =
+      (unsigned char*)calloc(hasher->hash_length(), sizeof(unsigned char));
+  KeyValue kv[2];
+  hex_string_to_hash(hash_str, hash, hasher->hash_length());
 
+  memcpy(&kv[0].key, hash, sizeof(uint32_t));
+  memcpy(&kv[1].key, hash + sizeof(uint32_t), sizeof(uint32_t));
+
+  lookup_hashtable(gpu_hash_leaf_map, kv, 2);
+
+  uintptr_t mptr;
+  MerkleNode* leaf;
+  uint32_t* mptr_u32 = (uint32_t*)&mptr;
+
+  *(mptr_u32) = kv[0].value;
+  *(mptr_u32 + 1) = kv[1].value;
+  leaf = (MerkleNode*)mptr;
+
+  return leaf;
+}
 
 // return a vector of the pointer to the sibling MerkleNodes along
 // the path to the root.
@@ -635,11 +660,7 @@ vector<MerkleNode *> MerkleTree::find_siblings(MerkleNode *leaf) {
 
 // return a vector of the sibling MerkleNodes along the path to the root.
 vector<MerkleNode> MerkleTree::find_siblings(string hash_str) {
-  if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
-    return {};
-  }
-  MerkleNode *cur_node = hash_leaf_map[hash_str];
-
+  MerkleNode* cur_node = find_leaf(hash_str);
   vector<MerkleNode> result;
   while (cur_node != nullptr && cur_node->parent != nullptr) {
     MerkleNode tmp;
@@ -678,10 +699,10 @@ bool MerkleTree::verify(string hash_str) {
   if (hash_str.size() != hasher->hash_length() * 2) {
     return false;
   }
-  if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
+  MerkleNode* node = find_leaf(hash_str);
+  if (node == nullptr) {
     return false;
   }
-  MerkleNode *node = hash_leaf_map[hash_str];
   MerkleNode input = (*node);
   auto siblings = find_siblings(node);
   return verify(input, siblings);
