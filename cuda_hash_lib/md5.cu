@@ -16,9 +16,7 @@
 /*************************** HEADER FILES ***************************/
 #include <stdlib.h>
 #include <memory.h>
-extern "C" {
 #include "md5.cuh"
-}
 /****************************** MACROS ******************************/
 #define MD5_BLOCK_SIZE 16               // MD5 outputs a 16 byte digest
 
@@ -224,8 +222,6 @@ __global__ void kernel_md5_hash(BYTE* indata, WORD inlen, BYTE* outdata, WORD n_
 	cuda_md5_final(&ctx, out);
 }
 
-extern "C"
-{
 void mcm_cuda_md5_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 {
 	BYTE *cuda_indata;
@@ -246,5 +242,4 @@ void mcm_cuda_md5_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 	}
 	cudaFree(cuda_indata);
 	cudaFree(cuda_outdata);
-}
 }

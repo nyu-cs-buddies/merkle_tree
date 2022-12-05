@@ -29,20 +29,22 @@ enum LeftOrRightSib {
 // Hash algorithms
 class Hasher {
  protected:
-  int digest_size;
+  unsigned int digest_size;
 
  public:
   virtual void get_hash(unsigned char *data, int data_len,
                         unsigned char *hash) = 0;
   virtual void get_hash(unsigned char* din, int block_size,
                         unsigned char* dout, int num_of_blocks) {}
-  int hash_length() const {
+  unsigned int hash_length() const {
     return digest_size;
   }
+  virtual ~Hasher() {}
 };
 
 class SHA_256 : public Hasher {
  public:
+  using Hasher::get_hash;
   SHA_256();
   void get_hash(unsigned char* data,
                 int data_len,
@@ -51,6 +53,7 @@ class SHA_256 : public Hasher {
 
 class MD_5 : public Hasher {
  public:
+  using Hasher::get_hash;
   MD_5();
   void get_hash(unsigned char* data,
                 int data_len,
@@ -109,7 +112,7 @@ class MerkleNode {
   MerkleNode* right;
   LeftOrRightSib lr;
   unsigned char* hash;
-  int digest_len;
+  unsigned int digest_len;
 
   MerkleNode();
   MerkleNode(unsigned char* hash, int digest_len_);
@@ -147,7 +150,12 @@ class MerkleTree {
   MerkleNode* make_tree_from_blocks(Blocks& blocks);
   bool verify(MerkleNode cur_node, std::vector<MerkleNode*>& siblings);
 
- public:
+  // for different GPU acceleration methods
+  MerkleNode* make_tree_no_accel(unsigned char* data, unsigned int data_len);
+  MerkleNode* make_tree_gpu_accel(unsigned char* data, unsigned int data_len,
+                                  unsigned short accel_mask);
+
+public:
   MerkleNode* root;
   void print();
   void print_root_hash();

@@ -16,9 +16,7 @@
 /*************************** HEADER FILES ***************************/
 #include <stdlib.h>
 #include <memory.h>
-extern "C" {
 #include "sha256.cuh"
-}
 /****************************** MACROS ******************************/
 #define SHA256_BLOCK_SIZE 32            // SHA256 outputs a 32 byte digest
 
@@ -205,13 +203,6 @@ __global__ void kernel_sha256_hash_cont(BYTE* indata, WORD inlen, BYTE* outdata,
 	cuda_sha256_final(&ctx, out);
 }
 
-// // Indicate the node to be the LEFT or RIGHT child of its parent
-// enum LeftOrRightSib {
-//   NA,
-//   LEFT,
-//   RIGHT
-// };
-
 // A modified version that also store the parent, left, right.
 __global__ void kernel_sha256_hash_link(BYTE* indata, WORD inlen,
                                         BYTE* outdata, WORD n_batch,
@@ -246,8 +237,6 @@ __global__ void kernel_sha256_hash_link(BYTE* indata, WORD inlen,
     dlrs[r_pos] = RIGHT;
 }
 
-extern "C"
-{
 void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 {
 	BYTE *cuda_indata;
@@ -268,5 +257,4 @@ void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 	}
 	cudaFree(cuda_indata);
 	cudaFree(cuda_outdata);
-}
 }

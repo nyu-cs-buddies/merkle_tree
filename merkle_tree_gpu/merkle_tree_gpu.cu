@@ -1,7 +1,6 @@
 #include "../merkle_tree.hpp"
-#include "../cuda_hash_lib/md5.cu"
-#include "../cuda_hash_lib/sha256.cu"
-#include "../cuda_hash_lib/config.h"
+#include "../cuda_hash_lib/md5.cuh"
+#include "../cuda_hash_lib/sha256.cuh"
 #include <cassert>
 #include <cmath>
 #include <openssl/sha.h>
@@ -351,167 +350,47 @@ MerkleTree::MerkleTree(Blocks& blocks_, Hasher* hasher_) : hasher(hasher_) {
 }
 
 // constructor using data in unsigned char and data_len
+// default to NO_ACCEL version of the constructor
 MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
-    : hasher(hasher_) {
-  // Blocks blocks(data, data_len);
-  // root = make_tree_from_blocks(blocks);
+    : MerkleTree(data, data_len, hasher_, NO_ACCEL) {}
 
-  // Note(allenpthuang): for temporary testing
-  // SHA_256_GPU gpu_hasher;
-  int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1 : data_len / BLOCK_SIZE;
-  int in_bytes = num_of_blocks * BLOCK_SIZE;
-  int out_bytes = num_of_blocks * hasher->hash_length();
-
-  unsigned char *out = (unsigned char *)calloc(out_bytes, sizeof(unsigned char));
-  unsigned char *dout, *din;
-  cudaMalloc((void**) &dout, out_bytes);
-  cudaMalloc((void**) &din, in_bytes);
-  cudaMemset(din, 0, in_bytes);
-  cudaMemcpy(din, data, data_len, cudaMemcpyHostToDevice);
-  hasher->get_hash(din, BLOCK_SIZE, dout, num_of_blocks);
-  // kernel_sha256_hash<<<1, num_of_blocks>>>(din, BLOCK_SIZE, dout, num_of_blocks);
-  cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
-  cudaFree(dout); cudaFree(din);
-
-  // out has all hashes
-  vector<MerkleNode *> cur_layer_nodes;
-  for (int i = 0; i < num_of_blocks; ++i) {
-    string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
-                                         hasher->hash_length());
-    MerkleNode *to_add = new MerkleNode(hash_str, hasher);
-    cur_layer_nodes.push_back(to_add);
-    hashes.push_back(to_add);
-    hash_leaf_map[hash_str] = to_add;
-  }
-
-  root = make_tree_from_hashes(hashes);
+MerkleNode* MerkleTree::make_tree_no_accel(unsigned char* data,
+                                           unsigned int data_len) {
+  Blocks blocks(data, data_len);
+  return make_tree_from_blocks(blocks);
 }
 
-int next_pow_of_2(int input) {
-  int r = 0;
-  while (input >>= 1) {
-    r++;
-  }
-  return r;
-}
+MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
+                                            unsigned int data_len,
+                                            unsigned short accel_mask) {
+  assert((accel_mask & ACCEL_CREATION) == ACCEL_CREATION);
 
-// Further acceleration
-MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
-                       unsigned short accel_mask)
-    : hasher(hasher_) {
-  if ((accel_mask & NO_ACCEL) == NO_ACCEL) {
-    Blocks blocks(data, data_len);
-    root = make_tree_from_blocks(blocks);
-    return;
-  }
-  int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1 : data_len / BLOCK_SIZE;
+  int num_of_blocks = (data_len % BLOCK_SIZE) ? data_len / BLOCK_SIZE + 1
+                                              : data_len / BLOCK_SIZE;
   int in_bytes = num_of_blocks * BLOCK_SIZE;
   // TODO(allenpthuang): need to know how to calc out_bytes
   int out_bytes = num_of_blocks * hasher->hash_length() * 2 * 2;
-  // int out_bytes = pow(2, next_pow_of_2(num_of_blocks)) * hasher->hash_length() * 2;
 
+  // allocate host and device memory required by ACCEL_CREATION
   unsigned char *out = (unsigned char *)calloc(out_bytes, sizeof(unsigned char));
   unsigned char *dout, *din;
   cudaMalloc((void**) &dout, out_bytes);
   cudaMalloc((void**) &din, in_bytes);
-
-  if (! (din && dout)) {
-    cerr << "Error allocating device memory for din and dout!" << endl;
+  if (! (out && din && dout)) {
+    cerr << "Error allocating host and device memory"
+         << " for out, din and dout!" << endl;
     exit(1);
   }
 
-  unsigned int *dparents, *dlefts, *drights;
-  LeftOrRightSib *dlrs;
-  if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
-    // TODO(allenpthuang): ditto, need to know how to calc.
-    arr_size = num_of_blocks * 2 * 2;
-    parents = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
-    lefts = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
-    rights = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
-    lrs = (LeftOrRightSib *)calloc(arr_size, sizeof(LeftOrRightSib));
-    cudaMalloc((void**) &dparents, arr_size * sizeof(unsigned int));
-    cudaMalloc((void**) &dlefts, arr_size * sizeof(unsigned int));
-    cudaMalloc((void**) &drights, arr_size * sizeof(unsigned int));
-    cudaMalloc((void**) &dlrs, arr_size * sizeof(LeftOrRightSib));
-    if (! (dparents && dlefts && drights && dlrs)) {
-      cerr << "Error allocating device memory for din and dout!" << endl;
-      exit(1);
-    }
-  }
-
+  // copy raw data to GPU memory
   cudaMemset(din, 0, in_bytes);
   cudaMemcpy(din, data, data_len, cudaMemcpyHostToDevice);
 
-  unsigned char *dout_left;
-  unsigned char *dout_right = dout;
-
+  // hash raw data into hash leaves in dout
   hasher->get_hash(din, BLOCK_SIZE, dout, num_of_blocks);
 
-  if ((accel_mask & (ACCEL_CREATION | ACCEL_REDUCTION))
-        == (ACCEL_CREATION | ACCEL_REDUCTION)) {
-    bool attached = false;
-    for (auto n = num_of_blocks; n > 0; n /= 2) {
-      dout_left = dout_right;
-      if (attached) {
-        n += 1;
-        attached = false;
-      }
-      dout_right += n * hasher->hash_length();
-
-      int threadsPerBlock = 1024;
-      int numOfBlocks = ceil(double(n / 2) / threadsPerBlock);
-      dim3 dimGrid(numOfBlocks);
-      dim3 dimBlock(threadsPerBlock);
-      if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
-        kernel_sha256_hash_link<<<dimGrid, dimBlock>>>(dout_left,
-                                                       hasher->hash_length(),
-                                                       dout_right,
-                                                       n / 2,
-                                                       dout,
-                                                       dparents,
-                                                       dlefts,
-                                                       drights,
-                                                       dlrs);
-      } else {
-        kernel_sha256_hash_cont<<<dimGrid, dimBlock>>>(dout_left,
-                                                       hasher->hash_length(),
-                                                       dout_right,
-                                                       n / 2);
-      }
-      if (n / 2 > 0 && n % 2 != 0) {
-        unsigned char *attach_pos = dout_right + (n / 2) * hasher->hash_length();
-        unsigned char *copy_pos = dout_left + (n - 1) * hasher->hash_length();
-        cudaMemcpy(attach_pos, copy_pos, hasher->hash_length(),
-                  cudaMemcpyDeviceToDevice);
-        attached = true;
-      }
-    }
-
-    cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
-    cudaFree(dout); cudaFree(din);
-
-    if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
-      cudaMemcpy(parents, dparents,
-                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
-      cudaMemcpy(lefts, dlefts,
-                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
-      cudaMemcpy(rights, drights,
-                 arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
-      cudaMemcpy(lrs, dlrs,
-                 arr_size * sizeof(LeftOrRightSib), cudaMemcpyDeviceToHost);
-      cudaFree(dparents);
-      cudaFree(dlefts);
-      cudaFree(drights);
-      cudaFree(dlrs);
-    }
-
-    unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
-    MerkleNode* root_node = new MerkleNode(result_out, hasher->hash_length());
-    root = root_node;
-    return;
-  }
-
-  if ((accel_mask & ACCEL_CREATION) == ACCEL_CREATION) {
+  // stop here and use CPU to make a MerkleTree
+  if ((accel_mask & ~ACCEL_CREATION) == 0) {
     cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
     cudaFree(dout);
     cudaFree(din);
@@ -527,9 +406,121 @@ MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
       hash_leaf_map[hash_str] = to_add;
     }
 
-    root = make_tree_from_hashes(hashes);
+    return make_tree_from_hashes(hashes);
+  }
+
+  assert((accel_mask & ACCEL_REDUCTION) == ACCEL_REDUCTION);
+  // continue for further accelerations
+  // left and right pointers for ACCEL_REDUCTION
+  unsigned char *dout_left;
+  unsigned char *dout_right = dout;
+
+  // allocate host and device memory required by ACCEL_LINK
+  unsigned int *dparents, *dlefts, *drights;
+  LeftOrRightSib *dlrs;
+  if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
+    // TODO(allenpthuang): ditto, need to know how to calc.
+    arr_size = num_of_blocks * 2 * 2;
+    parents = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
+    lefts = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
+    rights = (unsigned int *)calloc(arr_size, sizeof(unsigned int));
+    lrs = (LeftOrRightSib *)calloc(arr_size, sizeof(LeftOrRightSib));
+    cudaMalloc((void**) &dparents, arr_size * sizeof(unsigned int));
+    cudaMalloc((void**) &dlefts, arr_size * sizeof(unsigned int));
+    cudaMalloc((void**) &drights, arr_size * sizeof(unsigned int));
+    cudaMalloc((void**) &dlrs, arr_size * sizeof(LeftOrRightSib));
+    if (! (parents && lefts && rights && lrs)) {
+      cerr << "Error allocating host memory for ACCEL_LINK!" << endl;
+      exit(1);
+    }
+    if (! (dparents && dlefts && drights && dlrs)) {
+      cerr << "Error allocating device memory for ACCEL_LINK!" << endl;
+      exit(1);
+    }
+  }
+
+  // merge 2 hashes and produce one new hashes
+  bool attached = false;
+
+  // process the current batch of hash blocks and half the number every round
+  // this happens in the device memory (dout) without transferring data
+  // back to the host memory
+  for (auto n = num_of_blocks; n > 0; n /= 2) {
+    // left and right pointers: dout_left, dout_right
+    // if an orphan hash block is appended, increment n by 1
+    dout_left = dout_right;
+    if (attached) {
+      n++;
+      attached = false;
+    }
+    dout_right += n * hasher->hash_length();
+
+    // kernel configs
+    int threadsPerBlock = 1024;
+    int numOfBlocks = ceil(double(n / 2) / threadsPerBlock);
+    dim3 dimGrid(numOfBlocks);
+    dim3 dimBlock(threadsPerBlock);
+
+    // ACCEL_LINK not set, can only get root_hash (without node linking)
+    if ((accel_mask & ACCEL_LINK) != ACCEL_LINK) {
+      kernel_sha256_hash_cont<<<dimGrid, dimBlock>>>(dout_left,
+                                                     hasher->hash_length(),
+                                                     dout_right, n / 2);
+    } else { // with node linking
+      kernel_sha256_hash_link<<<dimGrid, dimBlock>>>(dout_left,
+                                                     hasher->hash_length(),
+                                                     dout_right, n / 2, dout,
+                                                     dparents, dlefts, drights,
+                                                     dlrs);
+    }
+
+    // append the orphan block if current num_of_blocks is odd
+    if (n / 2 > 0 && n % 2 != 0) {
+      unsigned char *attach_pos = dout_right + (n / 2) * hasher->hash_length();
+      unsigned char *copy_pos = dout_left + (n - 1) * hasher->hash_length();
+      cudaMemcpy(attach_pos, copy_pos, hasher->hash_length(),
+                cudaMemcpyDeviceToDevice);
+      attached = true;
+    }
+  }
+
+  cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
+  cudaFree(dout); cudaFree(din);
+
+  unsigned char *result_out = out + (dout_right - dout) - hasher->hash_length();
+  MerkleNode* root_node = new MerkleNode(result_out, hasher->hash_length());
+
+  // free memory used by ACCEK_LINK
+  if ((accel_mask & ACCEL_LINK) == ACCEL_LINK) {
+    cudaMemcpy(parents, dparents,
+                arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+    cudaMemcpy(lefts, dlefts,
+                arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+    cudaMemcpy(rights, drights,
+                arr_size * sizeof(unsigned long), cudaMemcpyDeviceToHost);
+    cudaMemcpy(lrs, dlrs,
+                arr_size * sizeof(LeftOrRightSib), cudaMemcpyDeviceToHost);
+    cudaFree(dparents);
+    cudaFree(dlefts);
+    cudaFree(drights);
+    cudaFree(dlrs);
+  } else { // if ACCEL_LINK is not set, there is no need to keep `out`.
+    free(out);
+  }
+
+  return root_node;
+}
+
+// Further acceleration
+MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_,
+                       unsigned short accel_mask = NO_ACCEL)
+    : hasher(hasher_) {
+  if ((accel_mask & NO_ACCEL) == NO_ACCEL) {
+    root = make_tree_no_accel(data, data_len);
     return;
   }
+  // else, use GPU accelerations
+  root = make_tree_gpu_accel(data, data_len, accel_mask);
 }
 
 // delete the MerkleTree
