@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
   // make a MerkleTree from data
   // MerkleTree merkle_tree(data, data_len, hasher);
-  unsigned short ACCEL_MASK = ACCEL_CREATION | ACCEL_REDUCTION | ACCEL_LINK;
+  unsigned short ACCEL_MASK = ACCEL_CREATION | ACCEL_REDUCTION | ACCEL_LINK | ACCEL_HASHMAP;
   MerkleTree merkle_tree(data, data_len, hasher, ACCEL_MASK);
   cout << "===== Read all at once. =====" << endl;
   cout << "BLOCK_SIZE = " << BLOCK_SIZE << endl;

@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "cuda_hashmap_lib/src/linearprobing.h"
 
 extern int BLOCK_SIZE;
 
@@ -24,7 +25,7 @@ enum LeftOrRightSib {
 #define ACCEL_CREATION    2
 #define ACCEL_REDUCTION   4
 #define ACCEL_LINK        8
-#define ACCEL_RESERVED_2  16
+#define ACCEL_HASHMAP     16
 
 // Hash algorithms
 class Hasher {
@@ -137,6 +138,7 @@ class MerkleTree {
   std::vector<MerkleNode*> hashes;
   std::unordered_map<std::string, MerkleNode*> hash_leaf_map;
   Hasher* hasher;
+  KeyValue* gpu_hash_leaf_map;
 
   // for GPU version node linking
   unsigned int* parents;
@@ -173,6 +175,7 @@ public:
   void append(Blocks& new_blocks);
   void append(unsigned char* data, int data_len);
 
+  MerkleNode* find_leaf(std::string hash_str);
   std::vector<MerkleNode*> find_siblings(MerkleNode* leaf);
   std::vector<MerkleNode> find_siblings(std::string hash_str);
 

@@ -1,6 +1,7 @@
 #include "../merkle_tree.hpp"
 #include "../cuda_hash_lib/md5.cuh"
 #include "../cuda_hash_lib/sha256.cuh"
+#include "../cuda_hashmap_lib/src/linearprobing.h"
 #include <cassert>
 #include <cmath>
 #include <openssl/sha.h>
@@ -364,6 +365,13 @@ MerkleTree::MerkleTree(Blocks& blocks_, Hasher* hasher_) : hasher(hasher_) {
 MerkleTree::MerkleTree(unsigned char* data, int data_len, Hasher* hasher_)
     : MerkleTree(data, data_len, hasher_, NO_ACCEL) {}
 
+
+KeyValue* create_gpu_hashmap(unsigned char* dhashes, MerkleNode* nodes, uint32_t n) {
+  KeyValue* hashtable_head = create_hashtable();
+  insert_hashtable_dmem(hashtable_head, dhashes, nodes, n);
+  return hashtable_head;
+}
+
 MerkleNode* MerkleTree::make_tree_no_accel(unsigned char* data,
                                            unsigned int data_len) {
   Blocks blocks(data, data_len);
@@ -524,7 +532,9 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
 
 
   cudaMemcpy(out, dout, out_bytes, cudaMemcpyDeviceToHost);
-  cudaFree(dout);
+  if ((accel_mask & ACCEL_HASHMAP) != ACCEL_HASHMAP) {
+    cudaFree(dout);
+  }
   cudaFree(din);
 
   MerkleNode* root_node;
@@ -548,11 +558,15 @@ MerkleNode* MerkleTree::make_tree_gpu_accel(unsigned char* data,
     cudaFree(drights);
     cudaFree(dlrs);
     // Note(allenpthuang): add leaves to the hashmap for lookup
-    for (unsigned int i = 0; i < num_of_blocks; i++)
-    {
-      string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
-                                           hasher->hash_length());
-      hash_leaf_map[hash_str] = nodes + i * sizeof(MerkleNode);
+    if ((accel_mask & ACCEL_HASHMAP) == ACCEL_HASHMAP) {
+      gpu_hash_leaf_map = create_gpu_hashmap(dout, nodes, num_of_blocks);
+      cudaFree(dout);
+    } else {
+      for (unsigned int i = 0; i < num_of_blocks; i++) {
+        string hash_str = hash_to_hex_string(out + i * hasher->hash_length(),
+                                            hasher->hash_length());
+        hash_leaf_map[hash_str] = nodes + i * sizeof(MerkleNode);
+      }
     }
 
     // for (const auto& [str, ignore] : hash_leaf_map) {
@@ -600,7 +614,32 @@ void MerkleTree::append(unsigned char* data, int data_len) {
   append(blocks_to_append);
 }
 
+// find a pointer to the leaf MerkleNode
+MerkleNode* MerkleTree::find_leaf(string hash_str) {
+  if (gpu_hash_leaf_map == nullptr
+      && hash_leaf_map.find(hash_str) != hash_leaf_map.end()) {
+    return hash_leaf_map[hash_str];
+  }
+  unsigned char* hash =
+      (unsigned char*)calloc(hasher->hash_length(), sizeof(unsigned char));
+  KeyValue kv[2];
+  hex_string_to_hash(hash_str, hash, hasher->hash_length());
 
+  memcpy(&kv[0].key, hash, sizeof(uint32_t));
+  memcpy(&kv[1].key, hash + sizeof(uint32_t), sizeof(uint32_t));
+
+  lookup_hashtable(gpu_hash_leaf_map, kv, 2);
+
+  uintptr_t mptr;
+  MerkleNode* leaf;
+  uint32_t* mptr_u32 = (uint32_t*)&mptr;
+
+  *(mptr_u32) = kv[0].value;
+  *(mptr_u32 + 1) = kv[1].value;
+  leaf = (MerkleNode*)mptr;
+
+  return leaf;
+}
 
 // return a vector of the pointer to the sibling MerkleNodes along
 // the path to the root.
@@ -621,11 +660,7 @@ vector<MerkleNode *> MerkleTree::find_siblings(MerkleNode *leaf) {
 
 // return a vector of the sibling MerkleNodes along the path to the root.
 vector<MerkleNode> MerkleTree::find_siblings(string hash_str) {
-  if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
-    return {};
-  }
-  MerkleNode *cur_node = hash_leaf_map[hash_str];
-
+  MerkleNode* cur_node = find_leaf(hash_str);
   vector<MerkleNode> result;
   while (cur_node != nullptr && cur_node->parent != nullptr) {
     MerkleNode tmp;
@@ -664,10 +699,10 @@ bool MerkleTree::verify(string hash_str) {
   if (hash_str.size() != hasher->hash_length() * 2) {
     return false;
   }
-  if (hash_leaf_map.find(hash_str) == hash_leaf_map.end()) {
+  MerkleNode* node = find_leaf(hash_str);
+  if (node == nullptr) {
     return false;
   }
-  MerkleNode *node = hash_leaf_map[hash_str];
   MerkleNode input = (*node);
   auto siblings = find_siblings(node);
   return verify(input, siblings);

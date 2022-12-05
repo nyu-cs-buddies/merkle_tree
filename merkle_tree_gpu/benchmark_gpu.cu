@@ -10,7 +10,8 @@ using namespace std;
 string PLATFORM = "GPU";
 string CACHE_PATH = "cached_test_data";
 
-unsigned short ACCEL_MASK = ACCEL_CREATION | ACCEL_REDUCTION | ACCEL_LINK;
+unsigned short ACCEL_MASK = ACCEL_CREATION | ACCEL_REDUCTION | ACCEL_LINK
+                            | ACCEL_HASHMAP;
 
 int main(int argc, char *argv[]) {
   if (argc < 3) {

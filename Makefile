@@ -25,6 +25,7 @@ TARGET_GPU = merkle_tree_gpu_demo
 PATH_OF_CPU_VER = merkle_tree_cpu
 PATH_OF_GPU_VER = merkle_tree_gpu
 PATH_OF_GPU_HASH_LIB = cuda_hash_lib
+PATH_OF_GPU_HASHMAP_LIB = cuda_hashmap_lib/src
 PATH_OF_UTILS = utils
 TIMER = timer
 TESTDATA = testdata
@@ -57,6 +58,7 @@ demo_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
 	$(CUDACXX) $(CUDACXXFLAGS) -o bin/$(TARGET_GPU) \
 	$(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu \
 	$(PATH_OF_GPU_HASH_LIB)/*.cu \
+	$(PATH_OF_GPU_HASHMAP_LIB)/*.cu \
 	$(PATH_OF_GPU_VER)/$(TARGET_GPU).cu $(LDFLAGS)
 
 benchmark_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
@@ -67,5 +69,6 @@ benchmark_gpu : $(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu
 	$(PATH_OF_UTILS)/$(TESTDATA).cpp \
 	$(PATH_OF_GPU_VER)/$(PATH_OF_GPU_VER).cu \
 	$(PATH_OF_GPU_HASH_LIB)/*.cu \
+	$(PATH_OF_GPU_HASHMAP_LIB)/*.cu \
 	$(PATH_OF_GPU_VER)/$(BENCHMARK_TARGET_GPU).cu $(LDFLAGS) 
 
