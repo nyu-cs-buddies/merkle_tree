@@ -1,11 +1,32 @@
 # Merkle Tree
-Merkle Tree by GPU
+Merkle Tree Operation Acceleration by GPU.
+
+This is a course project of *CSCI-GA.3033-025 Graphics Processing Units (GPUs): Architecture and Programming* by Professor Mohamed Zahran at New York University.
 
 ## Team Members
 - Morris (Chun-Ting) Shen 
 - Oscar Hsu
 - Po-Yuan Huang
 - Pin-Tsung Huang
+
+## Usage
+All our experiments are run on `cuda2` at New York University.
+On NYU CUDA machines, `git clone` this repo, and run in the folder:
+```
+make
+```
+The `Makefile` includes essential `module load` commands so that it could be compiled successfully on NYU CUDA machines.
+
+Then run tests with the script:
+```
+./run_tests.sh
+```
+Or, run tests with comparison of root hashes from the CPU and GPU versions.
+```
+./run_tests_check.sh
+```
+
+The output results are in the format of `(Platform, data_len, block_size, time (ms))`.
 
 ## Code Locations
 Currently, there are two versions with separate `README.md` in their directories:
