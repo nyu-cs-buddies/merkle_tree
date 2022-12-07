@@ -268,23 +268,6 @@ __global__ void kernel_link_merklenode(BYTE* hashes, WORD hash_size,
     }
 }
 
-// // Add to the hashmap
-// __global__ void kernel_add_to_hashmap(BYTE* leaf_hashes, WORD hash_size,
-//                                       MerkleNode* nodes,
-//                                       //unordered_map<string, MerkleNode*> map,
-//                                       WORD num_of_leaves)
-// {
-// 	WORD thread = blockIdx.x * blockDim.x + threadIdx.x;
-// 	if (thread >= num_of_leaves)
-// 	{
-// 		return;
-// 	}
-// 	BYTE* hash = leaf_hashes + thread * hash_size;
-// 	MerkleNode* cur_node = nodes + thread;
-//     std::string hash_str = hash_to_hex_string(hash, hash_size);
-//     //map[hash_str] = cur_node;
-// }
-
 
 void mcm_cuda_sha256_hash_batch(BYTE* in, WORD inlen, BYTE* out, WORD n_batch)
 {

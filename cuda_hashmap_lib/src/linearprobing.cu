@@ -54,7 +54,6 @@ __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, u
 }
 
 
-// Insert the key/values in kvs into the hashtable
 __global__ void gpu_hashtable_insert_dmem(KeyValue* hashtable, unsigned char* hashes, MerkleNode* nodes, unsigned int numkvs)
 {
     unsigned int threadid = blockIdx.x*blockDim.x + threadIdx.x;
@@ -92,6 +91,7 @@ __global__ void gpu_hashtable_insert_dmem(KeyValue* hashtable, unsigned char* ha
 }
 
 
+// Insert the key-value pairs directly from the device memory
 void insert_hashtable_dmem(KeyValue* pHashTable, unsigned char* dhashes,
                            MerkleNode* nodes, uint32_t num_kvs)
 {
@@ -108,6 +108,7 @@ void insert_hashtable_dmem(KeyValue* pHashTable, unsigned char* dhashes,
 }
 
 
+// Insert the key/values in kvs into the hashtable
 void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kvs)
 {
     // Copy the keyvalues to the GPU
